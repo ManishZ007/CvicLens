@@ -1,243 +1,168 @@
 "use client";
 
-import Link from "next/link";
-import {
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-} from "react";
+import { FormEvent, useState } from "react";
 
-type RegisterForm = {
-  full_name: string;
-  email: string;
-  age: string;
-  password: string;
-};
-
-type FieldErrors = Partial<
-  Record<keyof RegisterForm | "__all__", string[]>
->;
-
-const initialForm: RegisterForm = {
-  full_name: "",
-  email: "",
-  age: "",
-  password: "",
-};
-
-const fields: {
-  name: keyof RegisterForm;
-  label: string;
-  type: string;
-  autoComplete: string;
-  placeholder: string;
-}[] = [
-  {
-    name: "full_name",
-    label: "Full name",
-    type: "text",
-    autoComplete: "name",
-    placeholder: "Asha Patel",
-  },
-  {
-    name: "email",
-    label: "Email",
-    type: "email",
-    autoComplete: "email",
-    placeholder: "asha@example.com",
-  },
-  {
-    name: "age",
-    label: "Age",
-    type: "number",
-    autoComplete: "off",
-    placeholder: "21",
-  },
-  {
-    name: "password",
-    label: "Password",
-    type: "password",
-    autoComplete: "new-password",
-    placeholder: "At least 8 characters",
-  },
-];
+type Errors = Record<string, string[]>;
 
 export default function RegisterPage() {
-  const [form, setForm] = useState<RegisterForm>(initialForm);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [registeredName, setRegisteredName] =
-    useState<string | null>(null);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [age, setAge] = useState("");
+  const [password, setPassword] = useState("");
 
-  function handleChange(
-    e: ChangeEvent<HTMLInputElement>
-  ) {
-    const { name, value } = e.target;
+  const [errors, setErrors] = useState<Errors>({});
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    setErrors((prev) => ({
-      ...prev,
-      [name]: undefined,
-    }));
-  }
-
-  async function handleSubmit(
-    e: FormEvent<HTMLFormElement>
-  ) {
-    e.preventDefault();
-
-    setSubmitting(true);
     setErrors({});
+    setSuccess("");
+    setLoading(true);
 
     try {
-      const res = await fetch("/api/users/register", {
+      const response = await fetch("/api/users/register/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          age: Number(age),
+          password,
+        }),
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (!res.ok) {
-        setErrors(
-          data.errors ?? {
-            __all__: [
-              "Registration failed. Please try again.",
-            ],
-          }
-        );
+      if (!response.ok) {
+        setErrors(data.errors || {});
         return;
       }
 
-      setRegisteredName(data.full_name);
-      setForm(initialForm);
+      setSuccess("Account created successfully!");
+
+      setFullName("");
+      setEmail("");
+      setAge("");
+      setPassword("");
     } catch {
       setErrors({
-        __all__: [
-          "Could not reach the server. Is the Django backend running?",
-        ],
+        __all__: ["Unable to connect to the server."],
       });
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   }
 
-  if (registeredName) {
-    return (
-      <main className="flex flex-1 items-center justify-center bg-gray-50 px-4 py-16 dark:bg-gray-950">
-        <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-800 dark:bg-gray-900">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl text-green-600 dark:bg-green-900/40">
-            ✓
-          </div>
-
-          <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Welcome, {registeredName}!
-          </h1>
-
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Your CivicLens account has been created.
-          </p>
-
-          <Link
-            href="/"
-            className="mt-6 inline-block rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
-          >
-            Back to home
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="flex flex-1 items-center justify-center bg-gray-50 px-4 py-16 dark:bg-gray-950">
-      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-gray-900">
-        <Link
-          href="/"
-          className="text-xl font-bold text-gray-900 dark:text-gray-100"
-        >
-          Civic<span className="text-blue-600">Lens</span>
-        </Link>
-
-        <h1 className="mt-6 text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Create your account
-        </h1>
-
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Join CivicLens to report and track issues in your city.
-        </p>
+    <main className="flex min-h-screen items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <h1 className="mb-6 text-3xl font-bold">Create Account</h1>
 
         {errors.__all__ && (
-          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
-            {errors.__all__.join(" ")}
+          <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-red-700">
+            {errors.__all__.map((error) => (
+              <p key={error}>{error}</p>
+            ))}
           </div>
         )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="mt-6 space-y-5"
-        >
-          {fields.map((field) => {
-            const fieldErrors = errors[field.name];
+        {success && (
+          <div className="mb-4 rounded border border-green-300 bg-green-50 p-3 text-green-700">
+            {success}
+          </div>
+        )}
 
-            return (
-              <div key={field.name}>
-                <label
-                  htmlFor={field.name}
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {field.label}
-                </label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1 block font-medium">
+              Full name
+            </label>
 
-                <input
-                  id={field.name}
-                  name={field.name}
-                  type={field.type}
-                  autoComplete={field.autoComplete}
-                  placeholder={field.placeholder}
-                  value={form[field.name]}
-                  onChange={handleChange}
-                  required
-                  {...(field.name === "age"
-                    ? {
-                        min: 13,
-                        max: 120,
-                      }
-                    : {})}
-                  aria-invalid={!!fieldErrors}
-                  className={`mt-1 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-950 dark:text-gray-100 ${
-                    fieldErrors
-                      ? "border-red-500"
-                      : "border-gray-300 dark:border-gray-700"
-                  }`}
-                />
+            <input
+              type="text"
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+              className="w-full rounded border p-2"
+            />
 
-                {fieldErrors?.map((msg) => (
-                  <p
-                    key={msg}
-                    className="mt-1 text-sm text-red-600 dark:text-red-400"
-                  >
-                    {msg}
-                  </p>
+            {errors.full_name && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.full_name[0]}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block font-medium">
+              Email
+            </label>
+
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="w-full rounded border p-2"
+            />
+
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.email[0]}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block font-medium">
+              Age
+            </label>
+
+            <input
+              type="number"
+              min="13"
+              max="120"
+              value={age}
+              onChange={(event) => setAge(event.target.value)}
+              className="w-full rounded border p-2"
+            />
+
+            {errors.age && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.age[0]}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block font-medium">
+              Password
+            </label>
+
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="w-full rounded border p-2"
+            />
+
+            {errors.password && (
+              <div className="mt-1 text-sm text-red-600">
+                {errors.password.map((error) => (
+                  <p key={error}>{error}</p>
                 ))}
               </div>
-            );
-          })}
+            )}
+          </div>
 
           <button
             type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={loading}
+            className="w-full rounded bg-black px-4 py-2 text-white disabled:opacity-50"
           >
-            {submitting
-              ? "Creating account..."
-              : "Create account"}
+            {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
       </div>
