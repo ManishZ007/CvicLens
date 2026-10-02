@@ -1,6 +1,6 @@
 import json
 
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -17,7 +17,10 @@ def login_view(request):
         return JsonResponse({"errors": {"__all__": ["Invalid JSON."]}}, status=400)
 
     if not isinstance(data, dict):
-        return JsonResponse({"errors": {"__all__": ["Invalid request body."]}}, status=400)
+        return JsonResponse(
+            {"errors": {"__all__": ["Invalid request body."]}},
+            status=400,
+        )
 
     email = str(data.get("email", "")).strip().lower()
     password = str(data.get("password", ""))
@@ -30,7 +33,6 @@ def login_view(request):
     if errors:
         return JsonResponse({"errors": errors}, status=400)
 
-    # USERNAME_FIELD is email, so Django's backend treats "username" as the email
     user = authenticate(request, username=email, password=password)
     if user is None:
         return JsonResponse(
@@ -83,3 +85,23 @@ def register_view(request):
         },
         status=201,
     )
+
+
+def me_view(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Authentication required."}, status=401)
+
+    return JsonResponse(
+        {
+            "id": request.user.id,
+            "full_name": request.user.full_name,
+            "email": request.user.email,
+        }
+    )
+
+
+@csrf_exempt
+@require_POST
+def logout_view(request):
+    logout(request)
+    return JsonResponse({"message": "Logged out successfully."})
