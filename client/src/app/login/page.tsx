@@ -1,120 +1,167 @@
 "use client";
 
-import { FormEvent, useState } from "react";
 
-type Errors = Record<string, string[]>;
+import Link from "next/link";
+import { useState, type ChangeEvent, type FormEvent } from "react";
+
+
+type LoginForm = {
+  email: string;
+  password: string;
+};
+
+type FieldErrors = Partial<Record<keyof LoginForm | "__all__", string[]>>;
+
+const initialForm: LoginForm = { email: "", password: "" };
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [form, setForm] = useState<LoginForm>(initialForm);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [loggedInName, setLoggedInName] = useState<string | null>(null);
 
-  const [errors, setErrors] = useState<Errors>({});
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
+  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined, __all__: undefined }));
+  }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitting(true);
     setErrors({});
-    setSuccess("");
-    setLoading(true);
 
     try {
-      const response = await fetch("/api/users/login/", {
+      const res = await fetch("/api/users/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       });
+      const data = await res.json();
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setErrors(data.errors || {});
+      if (!res.ok) {
+        setErrors(data.errors ?? { __all__: ["Login failed. Please try again."] });
         return;
       }
 
-      setSuccess(`Welcome back, ${data.full_name}!`);
+      setLoggedInName(data.full_name);
+      setForm(initialForm);
     } catch {
-      setErrors({
-        __all__: ["Unable to connect to the server."],
-      });
+      setErrors({ __all__: ["Could not reach the server. Is the Django backend running?"] });
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
+  if (loggedInName) {
+    return (
+      <main className="flex flex-1 items-center justify-center bg-gray-50 px-4 py-16 dark:bg-gray-950">
+        <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-800 dark:bg-gray-900">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl text-green-600 dark:bg-green-900/40">
+            ✓
+          </div>
+          <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Welcome back, {loggedInName}!
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">You are now logged in.</p>
+          <Link
+            href="/"
+            className="mt-6 inline-block rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
+          >
+            Go to home
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const inputClass = (hasError: boolean) =>
+    `mt-1 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-950 dark:text-gray-100 ${
+      hasError ? "border-red-500" : "border-gray-300 dark:border-gray-700"
+    }`;
+
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <h1 className="mb-6 text-3xl font-bold">Login</h1>
+    <main className="flex flex-1 items-center justify-center bg-gray-50 px-4 py-16 dark:bg-gray-950">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-gray-900">
+        <Link href="/" className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          Civic<span className="text-blue-600">Lens</span>
+        </Link>
+        <h1 className="mt-6 text-2xl font-bold text-gray-900 dark:text-gray-100">Log in</h1>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          Welcome back! Log in to report and track issues.
+        </p>
 
         {errors.__all__ && (
-          <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-red-700">
-            {errors.__all__.map((error) => (
-              <p key={error}>{error}</p>
-            ))}
+          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+            {errors.__all__.join(" ")}
           </div>
         )}
 
-        {success && (
-          <div className="mb-4 rounded border border-green-300 bg-green-50 p-3 text-green-700">
-            {success}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div>
-            <label className="mb-1 block font-medium">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Email
             </label>
-
             <input
+              id="email"
+              name="email"
               type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded border p-2"
+              autoComplete="email"
+              placeholder="asha@example.com"
+              value={form.email}
+              onChange={handleChange}
+              required
+              aria-invalid={!!errors.email}
+              className={inputClass(!!errors.email)}
             />
-
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.email[0]}
+            {errors.email?.map((msg) => (
+              <p key={msg} className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {msg}
               </p>
-            )}
+            ))}
           </div>
 
           <div>
-            <label className="mb-1 block font-medium">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Password
             </label>
-
             <input
+              id="password"
+              name="password"
               type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded border p-2"
+              autoComplete="current-password"
+              placeholder="Your password"
+              value={form.password}
+              onChange={handleChange}
+              required
+              aria-invalid={!!errors.password}
+              className={inputClass(!!errors.password)}
             />
-
-            {errors.password && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.password[0]}
+            {errors.password?.map((msg) => (
+              <p key={msg} className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {msg}
               </p>
-            )}
+            ))}
+
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+
+            disabled={submitting}
+            className="w-full rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Logging in..." : "Login"}
+            {submitting ? "Logging in..." : "Log in"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="font-medium text-blue-600 hover:underline">
+            Create one
+          </Link>
+        </p>
+
       </div>
     </main>
   );
