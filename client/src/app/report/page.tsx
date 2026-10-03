@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import AppShell from "@/components/AppShell";
+import PhotoPicker from "@/components/report/PhotoPicker";
 
 export default function ReportPage() {
   const [text, setText] = useState("");
@@ -45,6 +46,7 @@ export default function ReportPage() {
         disabled
         className="w-full rounded-xl bg-[#F4B400] p-3 font-semibold text-[#2A2000] opacity-50"
       >
+        <PhotoPicker/>
         Continue
       </button>
       <p className="text-sm">Submission will connect in the next steps.</p>
