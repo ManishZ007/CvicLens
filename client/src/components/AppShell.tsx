@@ -13,7 +13,7 @@ export default function AppShell({
       <div className="mx-auto max-w-md overflow-hidden rounded-3xl bg-white shadow-lg">
         <header className="bg-[#1B4F9C] p-5 text-white">
           <Link href="/dashboard" className="text-2xl font-bold">
-            CvicLens
+            CivicLens
           </Link>
           <p className="mt-1 text-sm">Report it. Track it. Get it fixed.</p>
         </header>

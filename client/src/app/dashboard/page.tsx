@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import AppShell from "@/components/AppShell";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -39,19 +40,17 @@ export default function DashboardPage() {
     return () => controller.abort();
   }, [router]);
 
-  if (error) return <p role="alert" className="p-6">{error}</p>;
-  if (!name) return <p className="p-6">Loading…</p>;
+  if (error) return <AppShell title="Dashboard"><p role="alert">{error}</p></AppShell>;
+  if (!name) return <AppShell title="Dashboard"><p role="status">Loading…</p></AppShell>;
 
   return (
-    <main className="mx-auto max-w-md space-y-5 p-6">
-      <h1 className="text-2xl font-bold">Namaste, {name}</h1>
-      <p>Report it. Track it. Get it fixed.</p>
+    <AppShell title={`Namaste, ${name}`}>
       <Link
         href="/report"
-        className="block rounded-lg bg-blue-900 p-4 text-center text-white"
+        className="block rounded-xl bg-[#F4B400] p-4 text-center font-semibold text-[#2A2000]"
       >
         Report an issue
       </Link>
-    </main>
+    </AppShell>
   );
 }

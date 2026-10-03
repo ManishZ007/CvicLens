@@ -2,6 +2,7 @@
 
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 
 
@@ -15,6 +16,7 @@ type FieldErrors = Partial<Record<keyof LoginForm | "__all__", string[]>>;
 const initialForm: LoginForm = { email: "", password: "" };
 
 export default function LoginPage() {
+  const router = useRouter();
   const [form, setForm] = useState<LoginForm>(initialForm);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -46,6 +48,7 @@ export default function LoginPage() {
 
       setLoggedInName(data.full_name);
       setForm(initialForm);
+      router.replace("/dashboard");
     } catch {
       setErrors({ __all__: ["Could not reach the server. Is the Django backend running?"] });
     } finally {

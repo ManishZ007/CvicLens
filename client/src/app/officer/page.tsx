@@ -2,7 +2,7 @@ export default function OfficerPage() {
   return (
     <main className="min-h-screen bg-[#EDF0F4] p-6 text-[#18202E]">
       <header className="rounded-xl bg-[#1B4F9C] p-5 text-white">
-        <h1 className="text-2xl font-bold">CvicLens · Officer console</h1>
+        <h1 className="text-2xl font-bold">CivicLens · Officer console</h1>
         <p>Complaint management</p>
       </header>
 

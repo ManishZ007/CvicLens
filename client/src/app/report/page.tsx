@@ -2,14 +2,15 @@
 "use client";
 
 import { useState } from "react";
+import AppShell from "@/components/AppShell";
 
 export default function ReportPage() {
   const [text, setText] = useState("");
   const [category, setCategory] = useState("");
 
   return (
-    <main className="mx-auto max-w-md space-y-5 p-6">
-      <h1 className="text-2xl font-bold">What is wrong?</h1>
+    <AppShell title="What is wrong?">
+      <div className="space-y-5">
 
       <label className="block">
         Describe the issue
@@ -42,11 +43,12 @@ export default function ReportPage() {
 
       <button
         disabled
-        className="w-full rounded-lg bg-blue-900 p-3 text-white opacity-50"
+        className="w-full rounded-xl bg-[#F4B400] p-3 font-semibold text-[#2A2000] opacity-50"
       >
         Continue
       </button>
       <p className="text-sm">Submission will connect in the next steps.</p>
-    </main>
+      </div>
+    </AppShell>
   );
 }
