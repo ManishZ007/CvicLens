@@ -41,3 +41,24 @@ analysis service. These are agreed implementation targets, not live routes.
 ## Verify
 
 From server: `python -m unittest ai_engine.tests -v`.
+
+## Day 2: English keyword baseline
+
+`classify_text(AnalysisRequest(...))` in `classifier.py` suggests a category from
+whole-word/phrase matches. No dependencies or HTTP routes are added.
+
+```python
+from ai_engine.classifier import classify_text
+from ai_engine.contracts import AnalysisRequest
+
+result = classify_text(AnalysisRequest("Large pothole near the school"))
+print(result.to_dict())
+```
+
+The method is explicitly `rules`, confidence is null, and medium priority is an
+unassessed placeholder until Day 4. Multiple matching categories or no matches
+produce `other` for manual review. Hindi/Marathi raise NotImplementedError until
+translation is implemented. This baseline does not understand negation, context,
+or synonyms beyond its keyword list; it is not a trained AI model. Caller-supplied
+language is not automatic detection. Original text is preserved after the request
+contract's whitespace trimming. A citizen selection never becomes model evidence.
