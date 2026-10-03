@@ -25,7 +25,10 @@ export default function DashboardPage() {
           router.replace("/login");
           return;
         }
-        if (!response.ok) throw new Error("Unable to load profile.");
+
+        if (!response.ok) {
+          throw new Error("Unable to load profile.");
+        }
 
         const user = await response.json();
         setName(user.full_name);
@@ -40,8 +43,21 @@ export default function DashboardPage() {
     return () => controller.abort();
   }, [router]);
 
-  if (error) return <AppShell title="Dashboard"><p role="alert">{error}</p></AppShell>;
-  if (!name) return <AppShell title="Dashboard"><p role="status">Loading…</p></AppShell>;
+  if (error) {
+    return (
+      <AppShell title="Dashboard">
+        <p role="alert">{error}</p>
+      </AppShell>
+    );
+  }
+
+  if (!name) {
+    return (
+      <AppShell title="Dashboard">
+        <p role="status">Loading...</p>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title={`Namaste, ${name}`}>
@@ -51,6 +67,17 @@ export default function DashboardPage() {
       >
         Report an issue
       </Link>
+
+      <Link
+        href="/my-reports"
+        className="mt-4 block rounded-xl border border-gray-300 p-4 text-center"
+      >
+        My reports
+      </Link>
+
+      <p className="mt-2 text-sm text-gray-600">
+        Report history currently shows labelled demo data.
+      </p>
     </AppShell>
   );
 }
