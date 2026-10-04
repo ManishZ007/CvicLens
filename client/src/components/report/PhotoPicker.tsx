@@ -3,18 +3,19 @@
 
 import { useEffect, useState } from "react";
 
-export default function PhotoPicker({
-  onPhotoChange,
-}: {
-  onPhotoChange?: (file: File | null) => void;
-}) {
+export default function PhotoPicker() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (preview) return () => URL.revokeObjectURL(preview);
-  }, [preview]);
+    if (!photo) {
+      return;
+    }
+    const url = URL.createObjectURL(photo);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
 
   return (
     <section className="space-y-3">
@@ -41,9 +42,7 @@ export default function PhotoPicker({
           }
 
           setError("");
-          setPreview(URL.createObjectURL(file));
           setPhoto(file);
-          onPhotoChange?.(file);
         }}
         className="block w-full text-sm"
       />
@@ -68,7 +67,6 @@ export default function PhotoPicker({
               setPhoto(null);
               setPreview("");
               setError("");
-              onPhotoChange?.(null);
             }}
             className="rounded-lg border px-3 py-2"
           >

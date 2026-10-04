@@ -42,12 +42,11 @@ export default function ReportPage() {
         </select>
       </label>
 
-      <PhotoPicker />
-
       <button
         disabled
         className="w-full rounded-xl bg-[#F4B400] p-3 font-semibold text-[#2A2000] opacity-50"
       >
+        <PhotoPicker/>
         Continue
       </button>
       <p className="text-sm">Submission will connect in the next steps.</p>
