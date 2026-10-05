@@ -7,6 +7,7 @@ export default function OfficerPage() {
         <h1 className="text-2xl font-bold">CivicLens · Officer console</h1>
         <p>Complaint management</p>
       </header>
+
       <section className="mt-6 rounded-xl bg-white p-5">
         <h2 className="mb-5 text-xl font-semibold">Reported issues</h2>
         <ReportsList officer />
