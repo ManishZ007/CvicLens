@@ -1,3 +1,4 @@
+
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
@@ -39,7 +40,8 @@ class ComplaintTests(TestCase):
         ):
             with self.subTest(data=data):
                 response = self.client.post(
-                    "/api/complaints/", data=data,
+                    "/api/complaints/",
+                    data=data,
                     content_type="application/json",
                 )
                 self.assertEqual(response.status_code, 400)
@@ -60,15 +62,62 @@ class ComplaintTests(TestCase):
         payload = {"description": "Road issue"}
 
         response = client.post(
-            "/api/complaints/", data=payload,
+            "/api/complaints/",
+            data=payload,
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 403)
 
         token = client.get("/api/complaints/csrf/").json()["csrfToken"]
         response = client.post(
-            "/api/complaints/", data=payload,
+            "/api/complaints/",
+            data=payload,
             content_type="application/json",
             HTTP_X_CSRFTOKEN=token,
         )
         self.assertEqual(response.status_code, 201)
+
+
+class ComplaintReadTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.owner = User.objects.create_user(
+            email="owner@example.com",
+            password="Strong!Pass934",
+            full_name="Owner",
+            age=22,
+        )
+        self.other = User.objects.create_user(
+            email="other@example.com",
+            password="Strong!Pass935",
+            full_name="Other",
+            age=23,
+        )
+        self.report = Complaint.objects.create(
+            reporter=self.owner,
+            description="Pothole near school",
+        )
+
+    def test_other_citizen_cannot_read_report(self):
+        self.client.force_login(self.other)
+        self.assertEqual(
+            self.client.get(
+                f"/api/complaints/{self.report.pk}/"
+            ).status_code,
+            404,
+        )
+        response = self.client.get("/api/complaints/")
+        self.assertEqual(response.json()["count"], 0)
+
+    def test_officer_scope_requires_staff(self):
+        self.client.force_login(self.other)
+        self.assertEqual(
+            self.client.get(
+                "/api/complaints/?scope=officer"
+            ).status_code,
+            403,
+        )
+        self.other.is_staff = True
+        self.other.save()
+        response = self.client.get("/api/complaints/?scope=officer")
+        self.assertEqual(response.json()["count"], 1)
