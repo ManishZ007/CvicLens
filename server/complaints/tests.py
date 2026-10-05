@@ -1,4 +1,9 @@
 
+from io import BytesIO
+from tempfile import TemporaryDirectory
+
+from PIL import Image
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
@@ -108,6 +113,36 @@ class ComplaintReadTests(TestCase):
         )
         response = self.client.get("/api/complaints/")
         self.assertEqual(response.json()["count"], 0)
+
+    def test_photo_upload_and_private_download(self):
+        image = BytesIO()
+        Image.new("RGB", (2, 2)).save(image, format="PNG")
+        with TemporaryDirectory() as directory, self.settings(MEDIA_ROOT=directory):
+            self.client.force_login(self.owner)
+            response = self.client.post("/api/complaints/", {
+                "description": "Pothole with photo", "category": "pothole",
+                "latitude": "18.52", "longitude": "73.85",
+                "photo": SimpleUploadedFile("issue.png", image.getvalue(), content_type="image/png"),
+            })
+            self.assertEqual(response.status_code, 201)
+            media_url = response.json()["media"][0]["url"]
+            response = self.client.get(media_url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(b"".join(response.streaming_content), image.getvalue())
+            response.close()
+            self.client.force_login(self.other)
+            self.assertEqual(self.client.get(media_url).status_code, 404)
+
+    def test_fake_image_rejected_without_creating_report(self):
+        self.client.force_login(self.owner)
+        before = Complaint.objects.count()
+        response = self.client.post("/api/complaints/", {
+            "description": "Fake photo",
+            "photo": SimpleUploadedFile("fake.png", b"not an image", content_type="image/png"),
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("photo", response.json()["errors"])
+        self.assertEqual(Complaint.objects.count(), before)
 
     def test_officer_scope_requires_staff(self):
         self.client.force_login(self.other)

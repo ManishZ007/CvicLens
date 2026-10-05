@@ -62,3 +62,21 @@ translation is implemented. This baseline does not understand negation, context,
 or synonyms beyond its keyword list; it is not a trained AI model. Caller-supplied
 language is not automatic detection. Original text is preserved after the request
 contract's whitespace trimming. A citizen selection never becomes model evidence.
+
+## Day 3: trained local prototype
+
+`model_classifier.classify_with_model(request)` implements multinomial Naive Bayes
+with Laplace smoothing. It learns word counts from 36 hand-authored English
+examples in `training_data.py`, cached in memory on first use. It is a small local
+model adapter, not an external LLM or a production-trained municipal model.
+No dependency, HTTP route, model download, or API credential is required.
+
+Run `python -m ai_engine.evaluate` to compare the model with the Day 2 rules on
+12 separate hand-authored examples: rules 8/12, model 12/12. This small synthetic
+holdout is illustrative and does not establish real-world accuracy. The model
+does not understand negation, mixed issues, or out-of-domain input reliably.
+Unknown vocabulary and tied scores return `other`; human review is still needed.
+Confidence remains null because scores are not calibrated. Priority remains an
+explicit unassessed medium placeholder, and Hindi/Marathi are not supported yet.
+
+Run `python manage.py test users ai_engine` for all current backend tests.

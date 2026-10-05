@@ -76,7 +76,7 @@ export default function DashboardPage() {
       </Link>
 
       <p className="mt-2 text-sm text-gray-600">
-        Report history currently shows labelled demo data.
+        View your submitted reports and their current status.
       </p>
     </AppShell>
   );

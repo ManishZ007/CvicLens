@@ -48,7 +48,7 @@ export default function PhotoPicker({
         className="block w-full text-sm"
       />
       <p id="photo-help" className="text-sm text-gray-600">
-        JPG, PNG, or WebP. Maximum 5 MB. Preview only today.
+        JPG, PNG, or WebP. Maximum 5 MB. Uploaded when you submit the report.
       </p>
       {error && <p role="alert" className="text-red-700">{error}</p>}
 
