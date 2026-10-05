@@ -33,7 +33,7 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(result.method, "model")
         self.assertIsNone(result.confidence)
         self.assertIsNone(result.translated_text)
-        self.assertIn("not assessed", result.reason)
+        self.assertEqual(result.priority_method, "not_assessed")
 
     def test_incomplete_training_rejected(self):
         with self.assertRaises(ValueError):

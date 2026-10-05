@@ -57,7 +57,7 @@ class NaiveBayesClassifier:
         return AnalysisResult(
             original_text=request.text, original_language=request.language,
             category=category, priority=Priority.MEDIUM, confidence=None,
-            reason=reason + " Priority is not assessed; medium is a placeholder.",
+            reason=reason,
             method="model",
         )
 
