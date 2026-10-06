@@ -70,7 +70,7 @@ export default function ReportsList({ officer = false }: { officer?: boolean }) 
           <p role="status" className="text-sm text-gray-600">{result.count} reports</p>
           {!result.results.length && <p>No reports match these filters.</p>}
           {result.results.map(report => (
-            <Link key={report.id} href={`/my-reports/${report.id}`} className="block rounded-xl border border-gray-200 p-4">
+            <Link key={report.id} href={officer ? `/officer/${report.id}` : `/my-reports/${report.id}`} className="block rounded-xl border border-gray-200 p-4">
               <p className="text-sm">#{report.id} · {report.category}</p>
               <h2 className="break-words font-semibold">{report.description}</h2>
               <p className="text-sm">{report.status.replaceAll("_", " ")} · {report.priority}</p>
