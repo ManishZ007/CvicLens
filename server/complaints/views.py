@@ -1,3 +1,4 @@
+
 import json
 from uuid import uuid4
 
@@ -6,6 +7,7 @@ from django.db import transaction
 from django.http import FileResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
 from .forms import ComplaintForm
@@ -120,7 +122,9 @@ def complaints(request):
             photo = form.cleaned_data.get("photo")
             if photo:
                 extension = {
-                    "JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"
+                    "JPEG": ".jpg",
+                    "PNG": ".png",
+                    "WEBP": ".webp",
                 }[photo.image.format]
                 photo.name = uuid4().hex + extension
                 photo.seek(0)
@@ -165,3 +169,65 @@ def complaint_media(request, pk):
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+NEXT_STATUS = {
+    "submitted": "verified",
+    "verified": "assigned",
+    "assigned": "in_progress",
+    "in_progress": "resolved",
+}
+
+
+@require_http_methods(["PATCH"])
+def update_status(request, pk):
+    if not request.user.is_authenticated:
+        return error("Not authenticated.", 401)
+    if not request.user.is_active or not request.user.is_staff:
+        return error("Officer access required.", 403)
+
+    try:
+        data = json.loads(request.body)
+    except (ValueError, UnicodeDecodeError):
+        return error("Invalid JSON.")
+
+    if not isinstance(data, dict):
+        return error("Expected a JSON object.")
+
+    expected = data.get("expected_status")
+    target = data.get("status")
+    note = data.get("note", "")
+
+    if not isinstance(expected, str) or not isinstance(target, str):
+        return error("Current and next status are required.")
+    if NEXT_STATUS.get(expected) != target:
+        return error("This status transition is not allowed.")
+    if not isinstance(note, str) or len(note) > 1000:
+        return error("Note must be text, at most 1000 characters.")
+
+    with transaction.atomic():
+        get_object_or_404(Complaint, pk=pk)
+
+        updated = Complaint.objects.filter(
+            pk=pk,
+            status=expected,
+        ).update(
+            status=target,
+            updated_at=timezone.now(),
+        )
+
+        if not updated:
+            return error(
+                "Status changed elsewhere. Refresh and try again.",
+                409,
+            )
+
+        StatusHistory.objects.create(
+            complaint_id=pk,
+            status=target,
+            changed_by=request.user,
+            note=note.strip(),
+        )
+        complaint = Complaint.objects.get(pk=pk)
+
+    return JsonResponse(serialize(complaint, detail=True))

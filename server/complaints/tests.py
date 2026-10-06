@@ -156,3 +156,84 @@ class ComplaintReadTests(TestCase):
         self.other.save()
         response = self.client.get("/api/complaints/?scope=officer")
         self.assertEqual(response.json()["count"], 1)
+
+
+class StatusUpdateTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.citizen = User.objects.create_user(
+            email="status-citizen@example.com",
+            password="Strong!Pass934",
+            full_name="Citizen",
+            age=22,
+        )
+        self.officer = User.objects.create_user(
+            email="status-officer@example.com",
+            password="Strong!Pass935",
+            full_name="Officer",
+            age=25,
+            is_staff=True,
+        )
+        self.report = Complaint.objects.create(
+            reporter=self.citizen,
+            description="Pothole",
+        )
+        self.url = f"/api/complaints/{self.report.pk}/status/"
+
+    def update(self, expected, target):
+        return self.client.patch(
+            self.url,
+            data={
+                "expected_status": expected,
+                "status": target,
+                "note": "Checked by officer",
+            },
+            content_type="application/json",
+        )
+
+    def test_citizen_cannot_update(self):
+        self.client.force_login(self.citizen)
+        self.assertEqual(
+            self.update("submitted", "verified").status_code,
+            403,
+        )
+
+    def test_complete_lifecycle_and_history(self):
+        self.client.force_login(self.officer)
+        states = [
+            "submitted",
+            "verified",
+            "assigned",
+            "in_progress",
+            "resolved",
+        ]
+
+        for old, new in zip(states, states[1:]):
+            self.assertEqual(
+                self.update(old, new).status_code,
+                200,
+            )
+
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.status, "resolved")
+        self.assertEqual(self.report.history.count(), 4)
+
+    def test_skipped_and_stale_updates_rejected(self):
+        self.client.force_login(self.officer)
+
+        self.assertEqual(
+            self.update("submitted", "resolved").status_code,
+            400,
+        )
+
+        self.assertEqual(
+            self.update("submitted", "verified").status_code,
+            200,
+        )
+
+        self.assertEqual(
+            self.update("submitted", "verified").status_code,
+            409,
+        )
+
+        self.assertEqual(self.report.history.count(), 1)
