@@ -97,3 +97,22 @@ high; explicitly minor lighting/cosmetic complaints suggest low; others get medi
 Simple nearby negation is handled, but sarcasm, complex negation, resolved historical
 hazards and mixed issues can be misread. Suggestions require citizen/officer review.
 These rules do not verify location, severity, or actual proximity to facilities.
+
+## Day 5: location and department routing
+
+`location.route_complaint(category, latitude, longitude)` returns a RoutingResult
+with department_code/name, ward_code/name, mode and reason. Call `.to_dict()` for
+JSON-ready output. Coordinates must be numeric, finite and globally valid, or
+both omitted. Unknown categories and partial/invalid coordinates raise ValueError.
+
+Two SYNTHETIC rectangular demo zones are supplied, not official Pune boundaries:
+DEMO-A: latitude [18.50,18.55), longitude [73.80,73.85).
+DEMO-B: latitude [18.50,18.55), longitude [73.85,73.90).
+Outside points return no ward (`outside_demo`); absent location returns `pending`.
+Keep the demo label visible. The service does not call external APIs or PostGIS.
+Naman owns persistence/API integration and should map the returned codes to seeded
+Department/Ward records, leaving unresolved wards null rather than guessing.
+
+Example: `route_complaint("pothole", 18.52, 73.82).to_dict()` routes to Roads and
+Demo zone A. Shared edges belong to one zone only. Verified official polygons are
+required before claiming municipal ward accuracy.
