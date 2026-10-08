@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
+import StatusTimeline from "@/components/StatusTimeline";
 
 type Detail = {
   id: number;
@@ -17,8 +18,10 @@ type Detail = {
 export default function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+
   const [report, setReport] = useState<Detail | null>(null);
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,7 +57,7 @@ export default function ReportDetailPage() {
     void load();
 
     return () => controller.abort();
-  }, [id, router]);
+  }, [id, retry, router]);
 
   return (
     <AppShell title={`Report #${id}`}>
@@ -82,24 +85,18 @@ export default function ReportDetailPage() {
             </a>
           ))}
 
-          <h2 className="font-semibold">History</h2>
+          <StatusTimeline
+            status={report.status}
+            history={report.history}
+          />
 
-          <ol className="space-y-3">
-            {report.history.map((entry, index) => (
-              <li
-                key={`${entry.created_at}-${index}`}
-                className="border-l-2 pl-3"
-              >
-                <p>{entry.status.replaceAll("_", " ")}</p>
-
-                <p className="text-sm">{entry.note}</p>
-
-                <time className="text-sm text-gray-500">
-                  {new Date(entry.created_at).toLocaleString()}
-                </time>
-              </li>
-            ))}
-          </ol>
+          <button
+            type="button"
+            onClick={() => setRetry((value) => value + 1)}
+            className="rounded-lg border p-2"
+          >
+            Refresh status
+          </button>
         </div>
       )}
     </AppShell>
