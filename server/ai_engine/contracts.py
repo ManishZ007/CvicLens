@@ -71,6 +71,8 @@ class AnalysisResult:
     reason: str
     method: str
     translated_text: str | None = None
+    priority_reason: str | None = None
+    priority_method: str = "not_assessed"
 
     def __post_init__(self):
         object.__setattr__(self, "original_language", Language(self.original_language))
@@ -78,6 +80,8 @@ class AnalysisResult:
         object.__setattr__(self, "priority", Priority(self.priority))
         if self.method not in {"rules", "model"}:
             raise ValueError("method must be rules or model.")
+        if self.priority_method not in {"not_assessed", "rules", "model"}:
+            raise ValueError("Invalid priority method.")
         if self.confidence is not None:
             value = self.confidence
             if (isinstance(value, bool) or not isinstance(value, (int, float))

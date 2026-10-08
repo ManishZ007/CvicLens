@@ -80,3 +80,20 @@ Confidence remains null because scores are not calibrated. Priority remains an
 explicit unassessed medium placeholder, and Hindi/Marathi are not supported yet.
 
 Run `python manage.py test users ai_engine` for all current backend tests.
+
+## Day 4: priority suggestions
+
+Use `analysis.analyze_text(AnalysisRequest(text=...))` to combine the trained
+category model with explicit English priority rules. Results add `priority_reason`
+and `priority_method`; category `method` remains `model`, priority method is
+`rules`, and confidence remains null. No HTTP route or database writes are added.
+
+Direct category-only classification still returns an unassessed medium placeholder,
+now identified by `priority_method=not_assessed`. Use the combined entry point when
+an assessed recommendation is required.
+
+Safety phrases or road/drain issues mentioning schools/hospitals/playgrounds suggest
+high; explicitly minor lighting/cosmetic complaints suggest low; others get medium.
+Simple nearby negation is handled, but sarcasm, complex negation, resolved historical
+hazards and mixed issues can be misread. Suggestions require citizen/officer review.
+These rules do not verify location, severity, or actual proximity to facilities.
