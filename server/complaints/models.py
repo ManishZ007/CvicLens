@@ -1,3 +1,4 @@
+
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
@@ -19,6 +20,23 @@ STATUSES = [
     ("in_progress", "In progress"),
     ("resolved", "Resolved"),
 ]
+
+
+class Department(models.Model):
+    code = models.SlugField(unique=True)
+    name = models.CharField(max_length=100)
+
+
+class Ward(models.Model):
+    code = models.CharField(max_length=30, unique=True)
+    name = models.CharField(max_length=150)
+
+
+class Worker(models.Model):
+    name = models.CharField(max_length=150)
+    department = models.ForeignKey(Department, on_delete=models.PROTECT)
+    ward = models.ForeignKey(Ward, on_delete=models.PROTECT)
+    active = models.BooleanField(default=True)
 
 
 class Complaint(models.Model):
@@ -47,6 +65,16 @@ class Complaint(models.Model):
         null=True, blank=True,
         validators=[MinValueValidator(-180), MaxValueValidator(180)],
     )
+    department = models.ForeignKey(
+        Department, null=True, blank=True, on_delete=models.PROTECT
+    )
+    ward = models.ForeignKey(
+        Ward, null=True, blank=True, on_delete=models.PROTECT
+    )
+    assigned_worker = models.ForeignKey(
+        Worker, null=True, blank=True, on_delete=models.PROTECT
+    )
+    routing_mode = models.CharField(max_length=20, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

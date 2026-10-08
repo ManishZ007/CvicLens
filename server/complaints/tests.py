@@ -1,4 +1,3 @@
-
 from io import BytesIO
 from tempfile import TemporaryDirectory
 
@@ -7,7 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
-from .models import Complaint
+from .models import Complaint, Department, Ward, Worker
 
 
 class ComplaintTests(TestCase):
@@ -120,15 +119,24 @@ class ComplaintReadTests(TestCase):
         with TemporaryDirectory() as directory, self.settings(MEDIA_ROOT=directory):
             self.client.force_login(self.owner)
             response = self.client.post("/api/complaints/", {
-                "description": "Pothole with photo", "category": "pothole",
-                "latitude": "18.52", "longitude": "73.85",
-                "photo": SimpleUploadedFile("issue.png", image.getvalue(), content_type="image/png"),
+                "description": "Pothole with photo",
+                "category": "pothole",
+                "latitude": "18.52",
+                "longitude": "73.85",
+                "photo": SimpleUploadedFile(
+                    "issue.png",
+                    image.getvalue(),
+                    content_type="image/png",
+                ),
             })
             self.assertEqual(response.status_code, 201)
             media_url = response.json()["media"][0]["url"]
             response = self.client.get(media_url)
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(b"".join(response.streaming_content), image.getvalue())
+            self.assertEqual(
+                b"".join(response.streaming_content),
+                image.getvalue(),
+            )
             response.close()
             self.client.force_login(self.other)
             self.assertEqual(self.client.get(media_url).status_code, 404)
@@ -138,7 +146,11 @@ class ComplaintReadTests(TestCase):
         before = Complaint.objects.count()
         response = self.client.post("/api/complaints/", {
             "description": "Fake photo",
-            "photo": SimpleUploadedFile("fake.png", b"not an image", content_type="image/png"),
+            "photo": SimpleUploadedFile(
+                "fake.png",
+                b"not an image",
+                content_type="image/png",
+            ),
         })
         self.assertEqual(response.status_code, 400)
         self.assertIn("photo", response.json()["errors"])
@@ -174,20 +186,42 @@ class StatusUpdateTests(TestCase):
             age=25,
             is_staff=True,
         )
+
+        self.department = Department.objects.create(
+            code="roads",
+            name="Roads",
+        )
+        self.ward = Ward.objects.create(
+            code="W01",
+            name="Ward 01",
+        )
+        self.worker = Worker.objects.create(
+            name="Test Worker",
+            department=self.department,
+            ward=self.ward,
+            active=True,
+        )
+
         self.report = Complaint.objects.create(
             reporter=self.citizen,
             description="Pothole",
+            department=self.department,
+            ward=self.ward,
         )
         self.url = f"/api/complaints/{self.report.pk}/status/"
 
-    def update(self, expected, target):
+    def update(self, expected, target, worker_id=None):
+        data = {
+            "expected_status": expected,
+            "status": target,
+            "note": "Checked by officer",
+        }
+        if worker_id is not None:
+            data["worker_id"] = worker_id
+
         return self.client.patch(
             self.url,
-            data={
-                "expected_status": expected,
-                "status": target,
-                "note": "Checked by officer",
-            },
+            data=data,
             content_type="application/json",
         )
 
@@ -208,14 +242,33 @@ class StatusUpdateTests(TestCase):
             "resolved",
         ]
 
-        for old, new in zip(states, states[1:]):
-            self.assertEqual(
-                self.update(old, new).status_code,
-                200,
-            )
+        self.assertEqual(
+            self.update("submitted", "verified").status_code,
+            200,
+        )
+
+        self.assertEqual(
+            self.update(
+                "verified",
+                "assigned",
+                worker_id=self.worker.pk,
+            ).status_code,
+            200,
+        )
+
+        self.assertEqual(
+            self.update("assigned", "in_progress").status_code,
+            200,
+        )
+
+        self.assertEqual(
+            self.update("in_progress", "resolved").status_code,
+            200,
+        )
 
         self.report.refresh_from_db()
         self.assertEqual(self.report.status, "resolved")
+        self.assertEqual(self.report.assigned_worker, self.worker)
         self.assertEqual(self.report.history.count(), 4)
 
     def test_skipped_and_stale_updates_rejected(self):
@@ -237,3 +290,26 @@ class StatusUpdateTests(TestCase):
         )
 
         self.assertEqual(self.report.history.count(), 1)
+
+    def test_inactive_worker_rejected(self):
+        self.client.force_login(self.officer)
+
+        self.worker.active = False
+        self.worker.save()
+
+        self.assertEqual(
+            self.update(
+                "submitted",
+                "verified",
+            ).status_code,
+            200,
+        )
+
+        self.assertEqual(
+            self.update(
+                "verified",
+                "assigned",
+                worker_id=self.worker.pk,
+            ).status_code,
+            400,
+        )

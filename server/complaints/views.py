@@ -11,7 +11,15 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
 from .forms import ComplaintForm
-from .models import Complaint, ComplaintMedia, StatusHistory
+from .models import (
+    Complaint,
+    ComplaintMedia,
+    Department,
+    StatusHistory,
+    Ward,
+    Worker,
+)
+from .routing import apply_routing
 
 
 def error(message, status=400):
@@ -30,6 +38,18 @@ def serialize(complaint, detail=False):
         "latitude": complaint.latitude,
         "longitude": complaint.longitude,
         "created_at": complaint.created_at.isoformat(),
+        "department_id": complaint.department_id,
+        "department": (
+            complaint.department.name if complaint.department else None
+        ),
+        "ward_id": complaint.ward_id,
+        "ward": complaint.ward.name if complaint.ward else None,
+        "assigned_worker": (
+            complaint.assigned_worker.name
+            if complaint.assigned_worker
+            else None
+        ),
+        "routing_mode": complaint.routing_mode,
     }
     if detail:
         data["history"] = [
@@ -73,6 +93,24 @@ def complaints(request):
             if value:
                 queryset = queryset.filter(**{field: value})
 
+        query = request.GET.get("q", "").strip()
+        if query:
+            queryset = queryset.filter(description__icontains=query)
+
+        for field in ("department", "ward"):
+            value = request.GET.get(field)
+            if value:
+                if not value.isascii() or not value.isdecimal():
+                    return error(f"Invalid {field}.")
+                identifier = int(value)
+                if not 1 <= identifier <= 2147483647:
+                    return error(f"Invalid {field}.")
+                queryset = queryset.filter(**{f"{field}_id": identifier})
+
+        queryset = queryset.select_related(
+            "department", "ward", "assigned_worker"
+        )
+
         page = Paginator(queryset, 20).get_page(request.GET.get("page", 1))
         return JsonResponse({
             "results": [serialize(item) for item in page],
@@ -110,6 +148,7 @@ def complaints(request):
         with transaction.atomic():
             complaint = form.save(commit=False)
             complaint.reporter = request.user
+            apply_routing(complaint)
             complaint.save()
 
             StatusHistory.objects.create(
@@ -171,6 +210,28 @@ def complaint_media(request, pk):
     return response
 
 
+@require_GET
+def routing_options(request):
+    if not request.user.is_authenticated:
+        return error("Not authenticated.", 401)
+    if not request.user.is_staff:
+        return error("Officer access required.", 403)
+
+    return JsonResponse({
+        "departments": list(
+            Department.objects.order_by("name").values("id", "name")
+        ),
+        "wards": list(
+            Ward.objects.order_by("name").values("id", "name")
+        ),
+        "workers": list(
+            Worker.objects.filter(active=True).order_by("name").values(
+                "id", "name", "department_id", "ward_id"
+            )
+        ),
+    })
+
+
 NEXT_STATUS = {
     "submitted": "verified",
     "verified": "assigned",
@@ -206,15 +267,40 @@ def update_status(request, pk):
         return error("Note must be text, at most 1000 characters.")
 
     with transaction.atomic():
-        get_object_or_404(Complaint, pk=pk)
+        complaint = get_object_or_404(Complaint, pk=pk)
+        changes = {"status": target, "updated_at": timezone.now()}
+
+        if target == "assigned":
+            worker_id = data.get("worker_id")
+            if type(worker_id) is not int:
+                return error("Select a worker.")
+
+            if not complaint.department_id or not complaint.ward_id:
+                return error(
+                    "Department and ward routing must be completed first."
+                )
+
+            worker = Worker.objects.filter(
+                pk=worker_id,
+                active=True,
+                department_id=complaint.department_id,
+                ward_id=complaint.ward_id,
+            ).first()
+
+            if not worker:
+                return error(
+                    "Choose an active worker from this department and ward."
+                )
+
+            changes["assigned_worker_id"] = worker.pk
+
+        if target == "in_progress" and not complaint.assigned_worker_id:
+            return error("Assign a worker before starting work.")
 
         updated = Complaint.objects.filter(
             pk=pk,
             status=expected,
-        ).update(
-            status=target,
-            updated_at=timezone.now(),
-        )
+        ).update(**changes)
 
         if not updated:
             return error(
