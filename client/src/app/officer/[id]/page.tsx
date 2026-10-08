@@ -11,8 +11,19 @@ type Report = {
   status: string;
   priority: string;
   media: { id: number; url: string }[];
+  department_id: number | null;
+ward_id: number | null;
+department: string | null;
+ward: string | null;
+assigned_worker: string | null;
 };
 
+type Worker = {
+  id: number;
+  name: string;
+  department_id: number;
+  ward_id: number;
+};
 const nextStatus: Record<string, string> = {
   submitted: "verified",
   verified: "assigned",
@@ -27,6 +38,8 @@ export default function OfficerDetailPage() {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+const [workerId, setWorkerId] = useState("");
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -49,10 +62,30 @@ export default function OfficerDetailPage() {
         }
 
         if (!access.ok) {
-          throw new Error("Officer access unavailable.");
-        }
+  throw new Error("Officer access unavailable.");
+}
 
-        const response = await fetch(`/api/complaints/${id}/`, {
+const optionsResponse = await fetch(
+  "/api/complaints/routing-options/",
+  {
+    credentials: "include",
+    cache: "no-store",
+    signal: controller.signal,
+  },
+);
+
+if (!optionsResponse.ok) {
+  throw new Error("Unable to load workers.");
+}
+
+const options = await optionsResponse.json();
+
+if (!controller.signal.aborted) {
+  setWorkers(options.workers);
+  setWorkerId("");
+}
+
+const response = await fetch(`/api/complaints/${id}/`, {
           credentials: "include",
           cache: "no-store",
           signal: controller.signal,
@@ -99,19 +132,20 @@ export default function OfficerDetailPage() {
 
       const { csrfToken } = await tokenResponse.json();
 
-      const response = await fetch(`/api/complaints/${id}/status/`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
-        },
-        body: JSON.stringify({
-          expected_status: report.status,
-          status: nextStatus[report.status],
-          note,
-        }),
-      });
+     const response = await fetch(`/api/complaints/${id}/status/`, {
+  method: "PATCH",
+  credentials: "include",
+  headers: {
+    "Content-Type": "application/json",
+    "X-CSRFToken": csrfToken,
+  },
+  body: JSON.stringify({
+    expected_status: report.status,
+    status: nextStatus[report.status],
+    note,
+    worker_id: workerId ? Number(workerId) : null,
+  }),
+});
 
       if (response.status === 409) {
         throw new Error(
@@ -156,6 +190,17 @@ export default function OfficerDetailPage() {
             <p>
               Status: {report.status.replaceAll("_", " ")}
             </p>
+            <p>
+  Department: {report.department || "Pending"}
+</p>
+
+<p>
+  Ward: {report.ward || "Manual routing required"}
+</p>
+
+<p>
+  Worker: {report.assigned_worker || "Not assigned"}
+</p>
 
             {report.media.map((photo) => (
               <a
@@ -168,9 +213,40 @@ export default function OfficerDetailPage() {
             ))}
 
             {nextStatus[report.status] ? (
-              <>
-                <label className="block">
-                  Officer note
+  <>
+    {report.status === "verified" && (
+      <label className="block">
+        Assign a worker
+
+        <select
+          value={workerId}
+          disabled={busy}
+          onChange={(event) => setWorkerId(event.target.value)}
+          className="mt-2 w-full rounded-lg border bg-white p-3"
+        >
+          <option value="">Choose a worker</option>
+
+          {workers
+            .filter(
+              (worker) =>
+                worker.department_id === report.department_id &&
+                worker.ward_id === report.ward_id,
+            )
+            .map((worker) => (
+              <option key={worker.id} value={worker.id}>
+                {worker.name}
+              </option>
+            ))}
+        </select>
+
+        <span className="text-sm text-gray-600">
+          Only active workers matching this department and ward are listed.
+        </span>
+      </label>
+    )}
+
+    <label className="block">
+      Officer note
                   <textarea
                     value={note}
                     disabled={busy}
@@ -182,7 +258,10 @@ export default function OfficerDetailPage() {
 
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={
+  busy ||
+  (report.status === "verified" && !workerId)
+}
                   onClick={update}
                   className="rounded-lg bg-[#1B4F9C] p-3 text-white disabled:opacity-50"
                 >
