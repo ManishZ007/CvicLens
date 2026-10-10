@@ -1,6 +1,9 @@
 from django.core.management.base import BaseCommand
+from django.db import transaction
 
-from complaints.models import Department, Ward
+from complaints.models import Complaint, Department, Ward, Worker
+from complaints.routing import apply_routing
+from ai_engine.location import DEPARTMENTS as ROUTING_DEPARTMENTS, DEMO_WARDS as ROUTING_WARDS
 
 
 DEPARTMENTS = [
@@ -24,21 +27,38 @@ DEMO_WARDS = [
 class Command(BaseCommand):
     help = "Seed demo departments and wards for complaint routing."
 
+    @transaction.atomic
     def handle(self, *args, **options):
-        for code, name in DEPARTMENTS:
-            Department.objects.get_or_create(
+        departments = []
+        for code, name in ROUTING_DEPARTMENTS.items():
+            department, _ = Department.objects.get_or_create(
                 code=code,
                 defaults={"name": name},
             )
+            departments.append(department)
 
-        for code, name in DEMO_WARDS:
-            Ward.objects.get_or_create(
-                code=code,
-                defaults={"name": name},
+        for zone in ROUTING_WARDS:
+            ward, _ = Ward.objects.get_or_create(
+                code=zone.code,
+                defaults={"name": zone.name},
             )
+            for department in departments:
+                Worker.objects.get_or_create(
+                    name=f"Demo worker — {department.name} — {zone.code}",
+                    department=department, ward=ward,
+                )
+        for code, name in DEMO_WARDS:
+            Ward.objects.filter(code=code, name=name).update(
+                name=f"Legacy demo zone {code} (not an official ward)"
+            )
+        for complaint in Complaint.objects.filter(
+            status__in=["submitted", "verified"], assigned_worker__isnull=True
+        ):
+            apply_routing(complaint)
+            complaint.save(update_fields=["department", "ward", "routing_mode"])
 
         self.stdout.write(
             self.style.SUCCESS(
-                "Routing departments and demo wards seeded successfully."
+                "Demo departments, wards and workers ready (not official municipal wards)."
             )
         )
