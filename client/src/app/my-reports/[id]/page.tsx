@@ -2,17 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import StatusTimeline from "@/components/StatusTimeline";
+import RoutingSummary, {
+  type RoutingInfo,
+} from "@/components/RoutingSummary";
 
-type Detail = {
+type Detail = RoutingInfo & {
   id: number;
   description: string;
   category: string;
   status: string;
   priority: string;
+  latitude: number | null;
+  longitude: number | null;
   media: { id: number; url: string }[];
-  history: { status: string; note: string; created_at: string }[];
+  history: {
+    status: string;
+    note: string;
+    created_at: string;
+  }[];
 };
 
 export default function ReportDetailPage() {
@@ -31,25 +41,42 @@ export default function ReportDetailPage() {
       setError("");
 
       try {
-        const response = await fetch(`/api/complaints/${id}/`, {
-          credentials: "include",
-          cache: "no-store",
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `/api/complaints/${encodeURIComponent(id)}/`,
+          {
+            credentials: "include",
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
 
         if (response.status === 401) {
           router.replace("/login");
           return;
         }
 
-        if (!response.ok) {
-          throw new Error("Report unavailable.");
+        if (response.status === 404) {
+          throw new Error(
+            "Report not found or unavailable to your account."
+          );
         }
 
-        setReport(await response.json());
-      } catch {
+        if (!response.ok) {
+          throw new Error("Unable to load this report.");
+        }
+
+        const data: Detail = await response.json();
+
         if (!controller.signal.aborted) {
-          setError("Unable to load this report.");
+          setReport(data);
+        }
+      } catch (reason) {
+        if (!controller.signal.aborted) {
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "Request failed."
+          );
         }
       }
     }
@@ -62,18 +89,39 @@ export default function ReportDetailPage() {
   return (
     <AppShell title={`Report #${id}`}>
       {error ? (
-        <p role="alert">{error}</p>
+        <div>
+          <p role="alert">{error}</p>
+
+          <button
+            type="button"
+            onClick={() => setRetry((previous) => previous + 1)}
+            className="mt-2 rounded-lg border p-2"
+          >
+            Retry
+          </button>
+        </div>
       ) : !report ? (
-        <p role="status">Loading…</p>
+        <p role="status">Loading report…</p>
       ) : (
         <div className="space-y-4">
-          <p className="whitespace-pre-wrap">{report.description}</p>
+          <p className="whitespace-pre-wrap break-words">
+            {report.description}
+          </p>
 
           <p>
             {report.category} · {report.priority}
           </p>
 
-          <p>Status: {report.status.replaceAll("_", " ")}</p>
+          <p>
+            Status: {report.status.replaceAll("_", " ")}
+          </p>
+
+          {report.latitude !== null &&
+            report.longitude !== null && (
+              <p className="break-words text-sm">
+                Location: {report.latitude}, {report.longitude}
+              </p>
+            )}
 
           {report.media.map((photo) => (
             <a
@@ -85,6 +133,8 @@ export default function ReportDetailPage() {
             </a>
           ))}
 
+          <RoutingSummary report={report} />
+
           <StatusTimeline
             status={report.status}
             history={report.history}
@@ -92,13 +142,20 @@ export default function ReportDetailPage() {
 
           <button
             type="button"
-            onClick={() => setRetry((value) => value + 1)}
+            onClick={() => setRetry((previous) => previous + 1)}
             className="rounded-lg border p-2"
           >
             Refresh status
           </button>
         </div>
       )}
+
+      <Link
+        href="/my-reports"
+        className="mt-5 inline-block text-blue-800 underline"
+      >
+        My reports
+      </Link>
     </AppShell>
   );
 }
