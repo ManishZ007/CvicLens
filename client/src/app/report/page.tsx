@@ -1,12 +1,29 @@
+
 "use client";
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import PhotoPicker from "@/components/report/PhotoPicker";
+import AIAnalysis, {
+  type AnalysisPreview,
+} from "@/components/report/AIAnalysis";
+import {
+  useLanguage,
+  type Language,
+} from "@/components/LanguageProvider";
 
 export default function ReportPage() {
   const router = useRouter();
+
+  const { language: preferredLanguage } = useLanguage();
+
+  const [languageChoice, setLanguageChoice] =
+    useState<Language | null>(null);
+
+  const language = languageChoice ?? preferredLanguage;
+
+  const [analysis, setAnalysis] = useState<AnalysisPreview | null>(null);
   const [text, setText] = useState("");
   const [category, setCategory] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -77,9 +94,18 @@ export default function ReportPage() {
       body.set("category", category || "other");
       body.set("latitude", latitude);
       body.set("longitude", longitude);
+      body.set("original_language", language);
 
       if (photo) {
         body.set("photo", photo);
+      }
+
+      if (
+        analysis &&
+        analysis.text === text.trim() &&
+        analysis.language === language
+      ) {
+        body.set("analysis_token", analysis.token);
       }
 
       const response = await fetch("/api/complaints/", {
@@ -97,7 +123,9 @@ export default function ReportPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        const errors = data.errors as Record<string, string[]> | undefined;
+        const errors = data.errors as
+          | Record<string, string[]>
+          | undefined;
 
         throw new Error(
           errors
@@ -125,13 +153,28 @@ export default function ReportPage() {
       >
         <fieldset disabled={busy} className="space-y-5">
           <label className="block">
+            Complaint language
+            <select
+              value={language}
+              onChange={(event) =>
+                setLanguageChoice(event.target.value as Language)
+              }
+              className="mt-2 w-full rounded-lg border bg-white p-3"
+            >
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+              <option value="mr">मराठी</option>
+            </select>
+          </label>
+
+          <label className="block">
             Describe the issue
             <textarea
               required
               maxLength={5000}
               rows={5}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(event) => setText(event.target.value)}
               className="mt-2 w-full rounded-xl border p-3"
             />
           </label>
@@ -140,11 +183,10 @@ export default function ReportPage() {
             Category
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(event) => setCategory(event.target.value)}
               className="mt-2 w-full rounded-xl border bg-white p-3"
             >
               <option value="">Other / unsure</option>
-
               {[
                 "pothole",
                 "garbage",
@@ -153,10 +195,19 @@ export default function ReportPage() {
                 "drain",
                 "other",
               ].map((value) => (
-                <option key={value}>{value}</option>
+                <option key={value} value={value}>
+                  {value}
+                </option>
               ))}
             </select>
           </label>
+
+          <AIAnalysis
+            text={text}
+            language={language}
+            onResult={setAnalysis}
+            onCategory={setCategory}
+          />
 
           <PhotoPicker onPhotoChange={setPhoto} />
 
@@ -178,7 +229,7 @@ export default function ReportPage() {
               step="any"
               required
               value={latitude}
-              onChange={(e) => setLatitude(e.target.value)}
+              onChange={(event) => setLatitude(event.target.value)}
               className="mt-1 w-full rounded-lg border p-2"
             />
           </label>
@@ -192,7 +243,7 @@ export default function ReportPage() {
               step="any"
               required
               value={longitude}
-              onChange={(e) => setLongitude(e.target.value)}
+              onChange={(event) => setLongitude(event.target.value)}
               className="mt-1 w-full rounded-lg border p-2"
             />
           </label>
@@ -219,11 +270,9 @@ export default function ReportPage() {
 
           <p className="whitespace-pre-wrap break-words">{text}</p>
 
+          <p>Language: {language}</p>
           <p>Category: {category || "other"}</p>
-
-          <p>
-            Location: {latitude}, {longitude}
-          </p>
+          <p>Location: {latitude}, {longitude}</p>
 
           <p className="break-all">
             Photo: {photo ? photo.name : "Not attached"}
@@ -234,6 +283,15 @@ export default function ReportPage() {
               {error}
             </p>
           )}
+
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setAnalysis(null)}
+            className="rounded-lg border p-2"
+          >
+            Submit without saved AI analysis
+          </button>
 
           <div className="flex gap-3">
             <button
