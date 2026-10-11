@@ -1,3 +1,8 @@
+
+"use client";
+
+import { useLanguage } from "@/components/LanguageProvider";
+import { messages } from "@/lib/i18n";
 type Entry = {
   status: string;
   note: string;
@@ -19,6 +24,7 @@ export default function StatusTimeline({
   status: string;
   history: Entry[];
 }) {
+  const { language } = useLanguage();
   const current = steps.findIndex(([value]) => value === status);
 
   return (
@@ -50,7 +56,7 @@ export default function StatusTimeline({
 
               <div>
                 <p className="font-medium">
-                  {label}
+               {messages[language].statuses[value] || label}
                   {index === current && " · Current"}
                   {index > current && " · Pending"}
                 </p>
