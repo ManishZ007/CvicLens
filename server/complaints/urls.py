@@ -4,10 +4,11 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("csrf/", views.csrf_token, name="complaint-csrf"),
     path("", views.complaints, name="complaint-list-create"),
     path("<int:pk>/", views.complaint_detail, name="complaint-detail"),
     path(
-        "<int:pk>/media/<int:media_id>/",
+        "media/<int:pk>/",
         views.complaint_media,
         name="complaint-media",
     ),

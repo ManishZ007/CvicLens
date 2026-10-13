@@ -4,3 +4,4 @@ sqlparse==0.6.0
 typing_extensions==4.16.0
 tzdata==2026.4
 Pillow
+faster-whisper==1.2.1

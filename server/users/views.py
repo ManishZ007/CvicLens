@@ -204,7 +204,6 @@ def current_user_view(request):
     )
 
 
-@csrf_exempt
 @require_http_methods(["PATCH"])
 def preferences_view(request):
     if not request.user.is_authenticated:

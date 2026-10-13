@@ -30,6 +30,7 @@ db.sqlite3
 db.sqlite3-journal
 media/
 staticfiles/
+server/models/
 *.log
 
 # ===== Environment variables =====
@@ -43,5 +44,8 @@ staticfiles/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local daily work handoffs
+/docs/days/
 
 # Started Initial Commits

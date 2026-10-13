@@ -6,6 +6,7 @@ from django.views.decorators.http import require_POST
 
 from .multilingual import analyze_multilingual
 from .translation import TranslationUnavailable
+from .speech import MAX_BYTES, SpeechUnavailable, transcribe_audio
 
 
 TOKEN_SALT = "civiclens-analysis-v1"
@@ -43,3 +44,23 @@ def classify(request):
     token = signing.dumps({"user_id": request.user.pk, "analysis": result},
                           salt=TOKEN_SALT, compress=True)
     return JsonResponse({"analysis": result, "analysis_token": token})
+
+
+@require_POST
+def transcribe(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Not authenticated."}, status=401)
+    audio = request.FILES.get("audio")
+    if audio is None:
+        return JsonResponse({"error": "Upload an audio recording."}, status=400)
+    if audio.size > MAX_BYTES:
+        return JsonResponse({"error": "Audio must be 10 MB or smaller."}, status=413)
+    try:
+        result = transcribe_audio(audio.read(MAX_BYTES + 1), request.POST.get("language", "en"))
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+    except SpeechUnavailable as exc:
+        return JsonResponse({"error": str(exc)}, status=503)
+    if not result["text"]:
+        return JsonResponse({"error": "No speech detected. Record again in a quieter place."}, status=422)
+    return JsonResponse(result)
