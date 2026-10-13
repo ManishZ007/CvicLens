@@ -10,7 +10,14 @@ class ComplaintForm(forms.ModelForm):
 
     class Meta:
         model = Complaint
-        fields = ["description", "category", "latitude", "longitude"]
+        fields = [
+    "description",
+    "category",
+    "latitude",
+    "longitude",
+    "original_language",
+]
+        
 
     def clean_photo(self):
         photo = self.cleaned_data.get("photo")

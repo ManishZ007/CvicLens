@@ -1,3 +1,4 @@
+
 import json
 
 from django.contrib.auth import authenticate, login, logout
@@ -7,7 +8,11 @@ from django.core.validators import validate_email
 from django.db import IntegrityError
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import (
+    require_GET,
+    require_POST,
+    require_http_methods,
+)
 
 from .models import User
 
@@ -17,7 +22,7 @@ from .models import User
 def login_view(request):
     try:
         data = json.loads(request.body)
-    except json.JSONDecodeError:
+    except (ValueError, UnicodeDecodeError):
         return JsonResponse(
             {"errors": {"__all__": ["Invalid JSON."]}},
             status=400,
@@ -62,6 +67,7 @@ def login_view(request):
             "id": user.id,
             "full_name": user.full_name,
             "email": user.email,
+            "preferred_language": user.preferred_language,
         }
     )
 
@@ -71,7 +77,7 @@ def login_view(request):
 def register_view(request):
     try:
         data = json.loads(request.body)
-    except json.JSONDecodeError:
+    except (ValueError, UnicodeDecodeError):
         return JsonResponse(
             {"errors": {"__all__": ["Invalid JSON."]}},
             status=400,
@@ -150,7 +156,6 @@ def register_view(request):
             email=email,
             age=age,
         )
-
         user.set_password(password)
         user.save()
 
@@ -172,6 +177,7 @@ def register_view(request):
             "full_name": user.full_name,
             "email": user.email,
             "age": user.age,
+            "preferred_language": user.preferred_language,
         },
         status=201,
     )
@@ -193,8 +199,52 @@ def current_user_view(request):
             "full_name": user.full_name,
             "email": user.email,
             "age": user.age,
+            "preferred_language": user.preferred_language,
         }
     )
+
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def preferences_view(request):
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"errors": {"__all__": ["Not authenticated."]}},
+            status=401,
+        )
+
+    try:
+        data = json.loads(request.body)
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse(
+            {"errors": {"__all__": ["Invalid JSON."]}},
+            status=400,
+        )
+
+    language = (
+        data.get("preferred_language")
+        if isinstance(data, dict)
+        else None
+    )
+
+    if not isinstance(language, str) or language not in {
+        "en", "hi", "mr"
+    }:
+        return JsonResponse(
+            {
+                "errors": {
+                    "preferred_language": [
+                        "Choose English, Hindi or Marathi."
+                    ]
+                }
+            },
+            status=400,
+        )
+
+    request.user.preferred_language = language
+    request.user.save(update_fields=["preferred_language"])
+
+    return JsonResponse({"preferred_language": language})
 
 
 @csrf_exempt

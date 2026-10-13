@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
+from ai_engine.views import verify_analysis
+
 from .forms import ComplaintForm
 from .models import (
     Complaint,
@@ -50,7 +52,11 @@ def serialize(complaint, detail=False):
             else None
         ),
         "routing_mode": complaint.routing_mode,
+        "original_language": complaint.original_language,
+        "translated_description": complaint.translated_description,
+        "ai_analysis": complaint.ai_analysis,
     }
+
     if detail:
         data["history"] = [
             {
@@ -60,6 +66,7 @@ def serialize(complaint, detail=False):
             }
             for entry in complaint.history.order_by("created_at", "id")
         ]
+
         data["media"] = [
             {
                 "id": media.pk,
@@ -67,6 +74,7 @@ def serialize(complaint, detail=False):
             }
             for media in complaint.media.all()
         ]
+
     return data
 
 
@@ -86,6 +94,7 @@ def complaints(request):
         if request.GET.get("scope") == "officer":
             if not request.user.is_staff:
                 return error("Officer access required.", 403)
+
             queryset = Complaint.objects.all()
 
         for field in ("status", "category"):
@@ -102,16 +111,21 @@ def complaints(request):
             if value:
                 if not value.isascii() or not value.isdecimal():
                     return error(f"Invalid {field}.")
+
                 identifier = int(value)
                 if not 1 <= identifier <= 2147483647:
                     return error(f"Invalid {field}.")
+
                 queryset = queryset.filter(**{f"{field}_id": identifier})
 
         queryset = queryset.select_related(
             "department", "ward", "assigned_worker"
         )
 
-        page = Paginator(queryset, 20).get_page(request.GET.get("page", 1))
+        page = Paginator(queryset, 20).get_page(
+            request.GET.get("page", 1)
+        )
+
         return JsonResponse({
             "results": [serialize(item) for item in page],
             "page": page.number,
@@ -124,17 +138,24 @@ def complaints(request):
             data = json.loads(request.body)
         except (ValueError, UnicodeDecodeError):
             return error("Invalid JSON.")
+
         if not isinstance(data, dict):
             return error("Expected a JSON object.")
+
     elif request.content_type == "multipart/form-data":
         data = request.POST.copy()
+
     else:
         return error("Use JSON or multipart form data.", 415)
 
     if not data.get("category"):
         data["category"] = "other"
 
+    if not data.get("original_language"):
+        data["original_language"] = "en"
+
     form = ComplaintForm(data, request.FILES)
+
     if not form.is_valid():
         return JsonResponse({
             "errors": {
@@ -143,11 +164,39 @@ def complaints(request):
             }
         }, status=400)
 
+    # Verify any AI analysis before saving the complaint.
+    analysis = {}
+    token = data.get("analysis_token")
+
+    if token:
+        if not isinstance(token, str):
+            return error("Invalid analysis token.")
+
+        try:
+            analysis = verify_analysis(
+                token,
+                request.user.pk,
+                form.cleaned_data["description"],
+                form.cleaned_data["original_language"],
+            )
+        except ValueError as exc:
+            return error(str(exc))
+
     media = None
+
     try:
         with transaction.atomic():
             complaint = form.save(commit=False)
             complaint.reporter = request.user
+
+            complaint.ai_analysis = analysis
+            complaint.translated_description = (
+                analysis.get("translated_text") or ""
+            )
+
+            if analysis:
+                complaint.priority = analysis["priority"]
+
             apply_routing(complaint)
             complaint.save()
 
@@ -159,22 +208,32 @@ def complaints(request):
             )
 
             photo = form.cleaned_data.get("photo")
+
             if photo:
                 extension = {
                     "JPEG": ".jpg",
                     "PNG": ".png",
                     "WEBP": ".webp",
                 }[photo.image.format]
+
                 photo.name = uuid4().hex + extension
                 photo.seek(0)
-                media = ComplaintMedia(complaint=complaint, file=photo)
+
+                media = ComplaintMedia(
+                    complaint=complaint,
+                    file=photo,
+                )
                 media.save()
+
     except Exception:
         if media and media.file.name:
             media.file.delete(save=False)
         raise
 
-    return JsonResponse(serialize(complaint, detail=True), status=201)
+    return JsonResponse(
+        serialize(complaint, detail=True),
+        status=201,
+    )
 
 
 @require_GET
@@ -183,10 +242,12 @@ def complaint_detail(request, pk):
         return error("Not authenticated.", 401)
 
     queryset = Complaint.objects.all()
+
     if not request.user.is_staff:
         queryset = queryset.filter(reporter=request.user)
 
     complaint = get_object_or_404(queryset, pk=pk)
+
     return JsonResponse(serialize(complaint, detail=True))
 
 
@@ -196,10 +257,12 @@ def complaint_media(request, pk):
         return error("Not authenticated.", 401)
 
     queryset = ComplaintMedia.objects.all()
+
     if not request.user.is_staff:
         queryset = queryset.filter(complaint__reporter=request.user)
 
     media = get_object_or_404(queryset, pk=pk)
+
     try:
         response = FileResponse(media.file.open("rb"))
     except FileNotFoundError:
@@ -207,6 +270,7 @@ def complaint_media(request, pk):
 
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
+
     return response
 
 
@@ -214,6 +278,7 @@ def complaint_media(request, pk):
 def routing_options(request):
     if not request.user.is_authenticated:
         return error("Not authenticated.", 401)
+
     if not request.user.is_staff:
         return error("Officer access required.", 403)
 
@@ -225,9 +290,9 @@ def routing_options(request):
             Ward.objects.order_by("name").values("id", "name")
         ),
         "workers": list(
-            Worker.objects.filter(active=True).order_by("name").values(
-                "id", "name", "department_id", "ward_id"
-            )
+            Worker.objects.filter(active=True)
+            .order_by("name")
+            .values("id", "name", "department_id", "ward_id")
         ),
     })
 
@@ -244,6 +309,7 @@ NEXT_STATUS = {
 def update_status(request, pk):
     if not request.user.is_authenticated:
         return error("Not authenticated.", 401)
+
     if not request.user.is_active or not request.user.is_staff:
         return error("Officer access required.", 403)
 
@@ -261,17 +327,24 @@ def update_status(request, pk):
 
     if not isinstance(expected, str) or not isinstance(target, str):
         return error("Current and next status are required.")
+
     if NEXT_STATUS.get(expected) != target:
         return error("This status transition is not allowed.")
+
     if not isinstance(note, str) or len(note) > 1000:
         return error("Note must be text, at most 1000 characters.")
 
     with transaction.atomic():
         complaint = get_object_or_404(Complaint, pk=pk)
-        changes = {"status": target, "updated_at": timezone.now()}
+
+        changes = {
+            "status": target,
+            "updated_at": timezone.now(),
+        }
 
         if target == "assigned":
             worker_id = data.get("worker_id")
+
             if type(worker_id) is not int:
                 return error("Select a worker.")
 
@@ -314,6 +387,7 @@ def update_status(request, pk):
             changed_by=request.user,
             note=note.strip(),
         )
+
         complaint = Complaint.objects.get(pk=pk)
 
     return JsonResponse(serialize(complaint, detail=True))

@@ -1,4 +1,3 @@
-
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
@@ -46,6 +45,19 @@ class Complaint(models.Model):
         related_name="complaints",
     )
     description = models.TextField(max_length=5000)
+
+    original_language = models.CharField(
+        max_length=2,
+        choices=[
+            ("en", "English"),
+            ("hi", "Hindi"),
+            ("mr", "Marathi"),
+        ],
+        default="en",
+    )
+    translated_description = models.TextField(blank=True)
+    ai_analysis = models.JSONField(default=dict, blank=True)
+
     category = models.CharField(
         max_length=20, choices=CATEGORIES, default="other"
     )
@@ -54,16 +66,28 @@ class Complaint(models.Model):
     )
     priority = models.CharField(
         max_length=10,
-        choices=[("low", "Low"), ("medium", "Medium"), ("high", "High")],
+        choices=[
+            ("low", "Low"),
+            ("medium", "Medium"),
+            ("high", "High"),
+        ],
         default="medium",
     )
     latitude = models.FloatField(
-        null=True, blank=True,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-90),
+            MaxValueValidator(90),
+        ],
     )
     longitude = models.FloatField(
-        null=True, blank=True,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-180),
+            MaxValueValidator(180),
+        ],
     )
     department = models.ForeignKey(
         Department, null=True, blank=True, on_delete=models.PROTECT
