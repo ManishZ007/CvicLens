@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import ResolutionNotes from "@/components/ResolutionNotes";
 
 type Report = {
   id: number;
@@ -116,6 +117,10 @@ const response = await fetch(`/api/complaints/${id}/`, {
 
   async function update() {
     if (!report || busy) return;
+    if (report.status === "in_progress" && !note.trim()) {
+  setError("Add a resolution note before completing the complaint.");
+  return;
+}
 
     setBusy(true);
     setError("");
@@ -245,16 +250,26 @@ const response = await fetch(`/api/complaints/${id}/`, {
       </label>
     )}
 
-    <label className="block">
-      Officer note
-                  <textarea
-                    value={note}
-                    disabled={busy}
-                    onChange={(event) => setNote(event.target.value)}
-                    maxLength={1000}
-                    className="mt-2 w-full rounded-lg border p-3"
-                  />
-                </label>
+    
+{report.status === "in_progress" ? (
+  <ResolutionNotes
+    note={note}
+    onChange={setNote}
+    disabled={busy}
+  />
+) : (
+  <label className="block">
+    Officer note
+    <textarea
+      value={note}
+      disabled={busy}
+      maxLength={1000}
+      onChange={(event) => setNote(event.target.value)}
+      className="mt-2 w-full rounded-lg border p-3"
+    />
+  </label>
+)}
+
 
                 <button
                   type="button"
