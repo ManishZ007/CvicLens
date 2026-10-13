@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/components/LanguageProvider";
-
+import type { ReactNode } from "react";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -19,8 +19,12 @@ export const metadata: Metadata = {
   description:
     "Report civic issues in your city and track them until they are fixed.",
 };
-
-export default function RootLayout({ children }: LayoutProps<"/">) {
+type RootLayoutProps = {
+  children: ReactNode;
+};
+export default function RootLayout({
+  children,
+}: RootLayoutProps) {
   return (
     <html
       lang="en"
