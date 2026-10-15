@@ -17,6 +17,7 @@ from .models import (
     Complaint,
     ComplaintMedia,
     Department,
+    Notification,
     StatusHistory,
     Ward,
     Worker,
@@ -380,12 +381,17 @@ def update_status(request, pk):
                 "Status changed elsewhere. Refresh and try again.",
                 409,
             )
-
         StatusHistory.objects.create(
             complaint_id=pk,
             status=target,
             changed_by=request.user,
             note=note.strip(),
+        )
+
+        Notification.objects.create(
+            recipient_id=complaint.reporter_id,
+            complaint_id=pk,
+            message=f"Complaint #{pk} is now {target.replace('_', ' ')}.",
         )
 
         complaint = Complaint.objects.get(pk=pk)

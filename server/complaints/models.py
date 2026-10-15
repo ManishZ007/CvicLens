@@ -124,3 +124,19 @@ class ComplaintMedia(models.Model):
     )
     file = models.FileField(upload_to="complaints/%Y/%m/")
     created_at = models.DateTimeField(auto_now_add=True)
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+    complaint = models.ForeignKey(
+        Complaint,
+        on_delete=models.CASCADE,
+    )
+    message = models.CharField(max_length=200)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
