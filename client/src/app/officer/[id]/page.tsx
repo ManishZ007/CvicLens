@@ -11,7 +11,7 @@ type Report = {
   category: string;
   status: string;
   priority: string;
-  media: { id: number; url: string }[];
+  media: { id: number; url: string; kind?: string }[];
   department_id: number | null;
 ward_id: number | null;
 department: string | null;
@@ -158,9 +158,22 @@ const response = await fetch(`/api/complaints/${id}/`, {
         );
       }
 
-      if (!response.ok) {
-        throw new Error("Update failed. Check access and retry.");
-      }
+      
+if (!response.ok) {
+  const data = await response.json();
+
+  const errors = data.errors as
+    | Record<string, string[]>
+    | undefined;
+
+  throw new Error(
+    data.error ||
+      (errors
+        ? Object.values(errors).flat().join(" ")
+        : "Update failed.")
+  );
+}
+
 
       setReport(await response.json());
       setNote("");
@@ -213,7 +226,9 @@ const response = await fetch(`/api/complaints/${id}/`, {
                 href={photo.url}
                 className="block text-blue-800 underline"
               >
-                View photo #{photo.id}
+                {photo.kind === "resolution"
+  ? "Resolution evidence"
+  : "Reported issue"} #{photo.id}
               </a>
             ))}
 
@@ -253,10 +268,12 @@ const response = await fetch(`/api/complaints/${id}/`, {
     
 {report.status === "in_progress" ? (
   <ResolutionNotes
-    note={note}
-    onChange={setNote}
-    disabled={busy}
-  />
+  key={report.id}
+  complaintId={report.id}
+  note={note}
+  onChange={setNote}
+  disabled={busy}
+/>
 ) : (
   <label className="block">
     Officer note

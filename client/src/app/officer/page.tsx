@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ReportsList from "@/components/ReportsList";
-
+import OfficerStats from "@/components/OfficerStats";
 type Option = {
   id: number;
   name: string;
@@ -65,7 +65,7 @@ export default function OfficerPage() {
 
       <section className="mt-6 space-y-5 rounded-xl bg-white p-5">
         {error && <p role="alert">{error}</p>}
-
+<OfficerStats />
         <div className="flex flex-wrap gap-4">
           <label>
             Department
