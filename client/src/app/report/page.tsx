@@ -4,6 +4,8 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
+import VoiceRecorder from "@/components/report/VoiceRecorder";
+import DuplicateCheck from "@/components/report/DuplicateCheck";
 import PhotoPicker from "@/components/report/PhotoPicker";
 import AIAnalysis, {
   type AnalysisPreview,
@@ -167,6 +169,21 @@ export default function ReportPage() {
             </select>
           </label>
 
+{!reviewing && <VoiceRecorder
+  key={language}
+  language={language}
+  onApply={(transcript) => {
+    const combined = [text.trim(), transcript].filter(Boolean).join("\n");
+    if (combined.length > 5000) {
+      setError("Combined description exceeds 5000 characters. Shorten it first.");
+      return false;
+    }
+    setText(combined);
+    setAnalysis(null);
+    return true;
+  }}
+/>}
+
           <label className="block">
             Describe the issue
             <textarea
@@ -253,6 +270,11 @@ export default function ReportPage() {
               {error}
             </p>
           )}
+
+<DuplicateCheck
+  key={JSON.stringify([text.trim(), category, latitude, longitude])}
+  text={text.trim()} category={category} latitude={latitude} longitude={longitude}
+/>
 
           <button
             type="submit"

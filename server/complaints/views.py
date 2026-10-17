@@ -1,3 +1,4 @@
+from .models import Notification
 
 import json
 from uuid import uuid4
@@ -70,6 +71,7 @@ def serialize(complaint, detail=False):
         data["media"] = [
             {
                 "id": media.pk,
+                "kind": media.kind,
                 "url": f"/api/complaints/media/{media.pk}/",
             }
             for media in complaint.media.all()
@@ -336,6 +338,14 @@ def update_status(request, pk):
 
     with transaction.atomic():
         complaint = get_object_or_404(Complaint, pk=pk)
+        if complaint.status != expected:
+            return error("Status changed elsewhere. Refresh and try again.", 409)
+        if target == "resolved":
+            cycle = complaint.history.filter(status="in_progress").order_by("-created_at", "-id").first()
+            if not note.strip():
+                return error("A resolution note is required.")
+            if cycle is None or not complaint.media.filter(kind="resolution", created_at__gte=cycle.created_at).exists():
+                return error("Upload a resolution photo for this work cycle first.")
 
         changes = {
             "status": target,
@@ -386,6 +396,12 @@ def update_status(request, pk):
             status=target,
             changed_by=request.user,
             note=note.strip(),
+        )
+
+        Notification.objects.create(
+            recipient_id=complaint.reporter_id,
+            complaint_id=pk,
+            message=f"Complaint #{pk} is now {target.replace('_', ' ')}.",
         )
 
         complaint = Complaint.objects.get(pk=pk)

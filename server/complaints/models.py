@@ -119,8 +119,25 @@ class StatusHistory(models.Model):
 
 
 class ComplaintMedia(models.Model):
+    kind = models.CharField(max_length=20, default="report", choices=[("report", "Report"), ("resolution", "Resolution")])
     complaint = models.ForeignKey(
         Complaint, on_delete=models.CASCADE, related_name="media"
     )
     file = models.FileField(upload_to="complaints/%Y/%m/")
     created_at = models.DateTimeField(auto_now_add=True)
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    complaint = models.ForeignKey(Complaint, on_delete=models.CASCADE)
+    message = models.CharField(max_length=200)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+class Feedback(models.Model):
+    complaint = models.OneToOneField(Complaint, on_delete=models.CASCADE, related_name="feedback")
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.CharField(max_length=1000, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)

@@ -196,6 +196,7 @@ def current_user_view(request):
     return JsonResponse(
         {
             "id": user.id,
+            "is_staff": user.is_staff,
             "full_name": user.full_name,
             "email": user.email,
             "age": user.age,
@@ -246,7 +247,6 @@ def preferences_view(request):
     return JsonResponse({"preferred_language": language})
 
 
-@csrf_exempt
 @require_POST
 def logout_view(request):
     logout(request)

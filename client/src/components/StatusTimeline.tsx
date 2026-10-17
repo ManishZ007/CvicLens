@@ -61,7 +61,7 @@ export default function StatusTimeline({
                   {index > current && " · Pending"}
                 </p>
 
-                {entry && (
+                {entry && index <= current && (
                   <>
                     <p className="text-sm">{entry.note}</p>
 
@@ -78,6 +78,20 @@ export default function StatusTimeline({
           );
         })}
       </ol>
+<details className="mt-4 rounded-xl border p-3">
+  <summary className="cursor-pointer font-medium">Complete activity history</summary>
+  <ol className="mt-3 space-y-3">
+    {history.map((entry, index) => (
+      <li key={`${entry.created_at}-${index}`} className="border-l-2 border-blue-200 pl-3">
+        <p>{messages[language].statuses[entry.status] || entry.status.replaceAll("_", " ")}</p>
+        <p className="whitespace-pre-wrap">{entry.note}</p>
+        <time dateTime={entry.created_at} className="text-sm text-gray-600">
+          {new Date(entry.created_at).toLocaleString()}
+        </time>
+      </li>
+    ))}
+  </ol>
+</details>
     </section>
   );
 }

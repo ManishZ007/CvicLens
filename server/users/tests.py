@@ -1,11 +1,22 @@
 import json
 
-from django.test import TestCase
+from django.test import Client, TestCase
 
 from .models import User
 
 
 class AuthenticationTests(TestCase):
+    def test_logout_requires_csrf_and_me_exposes_own_role(self):
+        user = User.objects.create_user(email="staff-check@example.com", full_name="Staff", age=22,
+                                        password="River!Window49Cloud", is_staff=True)
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(user)
+        self.assertTrue(client.get("/api/users/me/").json()["is_staff"])
+        self.assertEqual(client.post("/api/users/logout/").status_code, 403)
+        token = client.get("/api/complaints/csrf/").json()["csrfToken"]
+        self.assertEqual(client.post("/api/users/logout/", HTTP_X_CSRFTOKEN=token).status_code, 200)
+        self.assertEqual(client.get("/api/users/me/").status_code, 401)
+
     def post_json(self, path, data):
         return self.client.post(
             path, data=json.dumps(data), content_type="application/json"

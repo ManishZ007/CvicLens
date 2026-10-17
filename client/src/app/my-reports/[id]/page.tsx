@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
+import ComplaintFeedback from "@/components/ComplaintFeedback";
 import StatusTimeline from "@/components/StatusTimeline";
 import RoutingSummary, {
   type RoutingInfo,
@@ -17,7 +18,7 @@ type Detail = RoutingInfo & {
   priority: string;
   latitude: number | null;
   longitude: number | null;
-  media: { id: number; url: string }[];
+  media: { id: number; url: string; kind?: string }[];
   history: {
     status: string;
     note: string;
@@ -129,7 +130,7 @@ export default function ReportDetailPage() {
               href={photo.url}
               className="block text-blue-800 underline"
             >
-              View attached photo #{photo.id}
+              {photo.kind === "resolution" ? "Resolution evidence" : "Reported issue"} #{photo.id}
             </a>
           ))}
 
@@ -139,6 +140,10 @@ export default function ReportDetailPage() {
             status={report.status}
             history={report.history}
           />
+
+{report.status === "resolved" && (
+  <ComplaintFeedback key={report.id} id={report.id} onReopened={() => setRetry(value => value + 1)} />
+)}
 
           <button
             type="button"

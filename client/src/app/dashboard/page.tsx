@@ -8,6 +8,7 @@ import AppShell from "@/components/AppShell";
 export default function DashboardPage() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [isOfficer, setIsOfficer] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function DashboardPage() {
 
         const user = await response.json();
         setName(user.full_name);
+        setIsOfficer(user.is_staff === true);
       } catch {
         if (!controller.signal.aborted) {
           setError("Unable to load your dashboard. Please refresh.");
@@ -61,6 +63,11 @@ export default function DashboardPage() {
 
   return (
     <AppShell title={`Namaste, ${name}`}>
+      {isOfficer && (
+        <Link href="/officer" className="mb-4 block rounded-xl bg-[#1B4F9C] p-4 text-center text-white">
+          Officer console
+        </Link>
+      )}
       <Link
         href="/report"
         className="block rounded-xl bg-[#F4B400] p-4 text-center font-semibold text-[#2A2000]"
@@ -75,6 +82,8 @@ export default function DashboardPage() {
         My reports
       </Link>
 
+<Link href="/nearby" className="mt-4 block rounded-xl border p-4 text-center">Nearby issues</Link>
+<Link href="/notifications" className="mt-4 block rounded-xl border p-4 text-center">Notifications</Link>
       <p className="mt-2 text-sm text-gray-600">
         View your submitted reports and their current status.
       </p>

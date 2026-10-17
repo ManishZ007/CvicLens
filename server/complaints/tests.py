@@ -1,3 +1,4 @@
+from .models import ComplaintMedia
 from io import BytesIO
 from tempfile import TemporaryDirectory
 
@@ -260,6 +261,8 @@ class StatusUpdateTests(TestCase):
             self.update("assigned", "in_progress").status_code,
             200,
         )
+
+        ComplaintMedia.objects.create(complaint=self.report, kind="resolution", file="test-evidence.png")
 
         self.assertEqual(
             self.update("in_progress", "resolved").status_code,

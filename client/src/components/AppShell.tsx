@@ -39,6 +39,9 @@ export default function AppShell({
           <Link href="/dashboard">{t.home}</Link>
           <Link href="/report">{t.report}</Link>
           <Link href="/profile">{t.profile}</Link>
+<Link href="/notifications">
+  {{ en: "Notifications", hi: "सूचनाएँ", mr: "सूचना" }[language]}
+</Link>
         </nav>
       </div>
     </main>
