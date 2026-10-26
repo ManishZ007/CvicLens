@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const steps = [
   {
     number: "01",
@@ -68,17 +70,23 @@ export default function Home() {
     <main className="flex-1 bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       {/* Navbar */}
       <header className="border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <span className="text-xl font-bold">
             Civic<span className="text-blue-600">Lens</span>
           </span>
-          <div className="flex gap-6 text-sm font-medium">
+          <div className="flex flex-wrap items-center gap-4 text-sm font-medium">
             <a href="#how-it-works" className="hover:text-blue-600">
               How it works
             </a>
             <a href="#features" className="hover:text-blue-600">
               Features
             </a>
+            <Link href="/login" className="rounded-lg border border-gray-300 px-4 py-2 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-900">
+              Login
+            </Link>
+            <Link href="/register" className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+              Register
+            </Link>
           </div>
         </nav>
       </header>
