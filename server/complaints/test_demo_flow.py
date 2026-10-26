@@ -23,6 +23,7 @@ class DemoFlowTests(TestCase):
 
     def sign_in(self, email, password):
         client = Client(enforce_csrf_checks=True)
+        client.defaults["HTTP_X_CSRFTOKEN"] = client.get("/api/complaints/csrf/").json()["csrfToken"]
         response = client.post("/api/users/login/", {"email": email, "password": password},
                                content_type="application/json")
         self.assertEqual(response.status_code, 200)

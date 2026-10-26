@@ -2,6 +2,7 @@
 
 
 import Link from "next/link";
+import { csrfToken } from "@/lib/csrf";
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 
@@ -36,7 +37,7 @@ export default function LoginPage() {
     try {
       const res = await fetch("/api/users/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRFToken": await csrfToken() },
         body: JSON.stringify(form),
       });
       const data = await res.json();

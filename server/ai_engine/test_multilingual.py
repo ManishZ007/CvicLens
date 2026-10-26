@@ -38,8 +38,11 @@ class MultilingualTests(TestCase):
 
     @patch.dict("os.environ", {"AZURE_TRANSLATOR_KEY": ""})
     def test_missing_credentials_are_explicit(self):
-        with self.assertRaises(TranslationUnavailable):
-            analyze_multilingual("सड़क पर गड्ढा है", "hi")
+        result = analyze_multilingual("सड़क पर गड्ढा है", "hi")
+        self.assertEqual(result["category"], "pothole")
+        self.assertEqual(result["method"], "rules")
+        self.assertIsNone(result["translated_text"])
+        self.assertIn("translation is unavailable", result["notice"])
 
     @patch.dict("os.environ", {"AZURE_TRANSLATOR_KEY": "test-not-a-real-key"})
     @patch("ai_engine.translation.urlopen")
@@ -78,5 +81,14 @@ class MultilingualTests(TestCase):
     @patch.dict("os.environ", {"AZURE_TRANSLATOR_KEY": ""})
     def test_unavailable_service_returns_503(self):
         self.assertEqual(self.client.post("/api/ai/classify/", {
-            "text": "खड्डा", "language": "mr",
+            "text": "खड्डा", "language": "auto",
         }, content_type="application/json").status_code, 503)
+
+    @patch.dict("os.environ", {"AZURE_TRANSLATOR_KEY": ""})
+    def test_local_marathi_and_ambiguous_reports(self):
+        result = analyze_multilingual("रस्त्यावर खड्डा आहे अपघात होतो", "mr")
+        self.assertEqual(result["category"], "pothole")
+        self.assertEqual(result["priority"], "high")
+        self.assertEqual(result["original_language"], "mr")
+        self.assertEqual(analyze_multilingual("कचरा आणि खड्डा", "mr")["category"], "other")
+        self.assertEqual(analyze_multilingual("मदत करा", "mr")["category"], "other")

@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
+import { csrfToken } from "@/lib/csrf";
 
 type Errors = Record<string, string[]>;
 
@@ -26,6 +28,7 @@ export default function RegisterPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-CSRFToken": await csrfToken(),
         },
         body: JSON.stringify({
           full_name: fullName,
@@ -73,17 +76,22 @@ export default function RegisterPage() {
         {success && (
           <div className="mb-4 rounded border border-green-300 bg-green-50 p-3 text-green-700">
             {success}
+            <Link href="/login" className="ml-2 underline">Log in to continue</Link>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block font-medium">
+            <label htmlFor="full-name" className="mb-1 block font-medium">
               Full name
             </label>
 
             <input
               type="text"
+              id="full-name"
+              autoComplete="name"
+              required
+              maxLength={150}
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
               className="w-full rounded border p-2"
@@ -97,12 +105,15 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="mb-1 block font-medium">
+            <label htmlFor="email" className="mb-1 block font-medium">
               Email
             </label>
 
             <input
               type="email"
+              id="email"
+              autoComplete="email"
+              required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="w-full rounded border p-2"
@@ -116,12 +127,15 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="mb-1 block font-medium">
+            <label htmlFor="age" className="mb-1 block font-medium">
               Age
             </label>
 
             <input
               type="number"
+              id="age"
+              required
+              step="1"
               min="13"
               max="120"
               value={age}
@@ -137,12 +151,15 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="mb-1 block font-medium">
+            <label htmlFor="password" className="mb-1 block font-medium">
               Password
             </label>
 
             <input
               type="password"
+              id="password"
+              autoComplete="new-password"
+              required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded border p-2"

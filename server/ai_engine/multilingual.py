@@ -2,7 +2,8 @@ from dataclasses import replace
 
 from .analysis import analyze_text
 from .contracts import AnalysisRequest, Language
-from .translation import translate_to_english
+from .translation import TranslationUnavailable, translate_to_english
+from .local_language import analyze_local
 
 
 def analyze_multilingual(text, language="en"):
@@ -14,11 +15,18 @@ def analyze_multilingual(text, language="en"):
     translated = None
     processing_text = validated.text
     if language != "en":
-        source, processing_text = translate_to_english(
-            validated.text, None if language == "auto" else language
-        )
+        try:
+            source, processing_text = translate_to_english(
+                validated.text, None if language == "auto" else language
+            )
+        except TranslationUnavailable:
+            if language == "auto":
+                raise
+            result = analyze_local(validated.text, language)
+            result["notice"] = "Local keyword rules used. English translation is unavailable; confirm the category and priority."
+            return result
         if source != Language.ENGLISH:
             translated = processing_text
     result = analyze_text(AnalysisRequest(text=processing_text))
-    return replace(result, original_text=text, original_language=source,
+    return replace(result, original_text=validated.text, original_language=source,
                    translated_text=translated).to_dict()

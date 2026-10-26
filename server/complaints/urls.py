@@ -3,6 +3,7 @@ from . import notification_views, completion_views
 from django.urls import path
 
 from . import views
+from .manual_routing import update_routing
 
 urlpatterns = [
     path("csrf/", views.csrf_token, name="complaint-csrf"),
@@ -15,6 +16,7 @@ urlpatterns = [
     ),
     path("routing-options/", views.routing_options, name="routing-options"),
     path("<int:pk>/status/", views.update_status, name="update-status"),
+    path("<int:pk>/routing/", update_routing, name="update-routing"),
 
 path("notifications/", notification_views.notifications, name="notifications"),
 path("notifications/<int:pk>/read/", notification_views.mark_read, name="notification-read"),

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import ResolutionNotes from "@/components/ResolutionNotes";
+import ManualRouting from "@/components/ManualRouting";
 
 type Report = {
   id: number;
@@ -220,6 +221,11 @@ const response = await fetch(`/api/complaints/${id}/`, {
             ))}
 
             {nextStatus[report.status] ? (
+              <div className="space-y-4">
+              {["submitted", "verified"].includes(report.status) && (
+                <ManualRouting key={`${report.id}-${report.status}`} id={report.id} status={report.status}
+                  onSaved={() => setReload(value => value + 1)} />
+              )}
   <>
     {report.status === "verified" && (
       <label className="block">
@@ -283,6 +289,7 @@ const response = await fetch(`/api/complaints/${id}/`, {
                     : `Mark ${nextStatus[report.status].replaceAll("_", " ")}`}
                 </button>
               </>
+              </div>
             ) : (
               <p>This complaint is resolved.</p>
             )}

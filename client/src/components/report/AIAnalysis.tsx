@@ -12,6 +12,7 @@ export type AnalysisPreview = {
     priority: string;
     translated_text: string | null;
     priority_reason: string;
+    notice?: string;
   };
 };
 
@@ -107,8 +108,9 @@ export default function AIAnalysis({
       </button>
 
       <p className="text-sm text-gray-600">
-        Hindi/Marathi analysis sends the description to the translation
-        service. You can submit without AI.
+        Hindi/Marathi analysis may use the configured translation service.
+        If unavailable, local keyword rules provide suggestions without a translation.
+        You can always submit without analysis.
       </p>
 
       {error && <p role="alert" className="text-red-700">{error}</p>}
@@ -120,6 +122,7 @@ export default function AIAnalysis({
       {result && current && (
         <>
           <p>Suggested category: {result.analysis.category}</p>
+          {result.analysis.notice && <p role="status" className="text-sm text-amber-800">{result.analysis.notice}</p>}
 
           <p>Suggested priority: {result.analysis.priority}</p>
 

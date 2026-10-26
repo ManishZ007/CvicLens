@@ -30,6 +30,7 @@ starts work, uploads evidence and resolves with a note. Citizen opens the notifi
 views evidence, rates the result, and optionally reopens for reassignment.
 
 ## Verification
+Server: .\venv\Scripts\python.exe manage.py showcase_check
 Server: .\venv\Scripts\python.exe manage.py test
 Server: .\venv\Scripts\python.exe manage.py makemigrations --check --dry-run
 Client: npm run lint
@@ -42,6 +43,25 @@ Ward bounds and the 72-hour overdue rule are demonstration data/policy.
 Duplicate suggestions use word overlap and distance, not semantic cross-language AI.
 Nearby issues are a privacy-limited list, not a map. Notifications are in-app, not push/SMS.
 Images are stored evidence; no image-recognition model is implemented.
-Translation requires configured credentials; transcription accuracy depends on language/audio quality.
+English translation requires configured credentials. When unavailable, Hindi/Marathi reports
+get labelled local keyword suggestions without a fabricated translation. Speech accuracy depends on audio.
+The installable app includes a public offline screen. Explicit account-scoped device drafts save
+text/location, not photos/audio, and must be restored and submitted manually after reconnecting.
+Authenticated pages and API responses are never cached by the service worker.
 Full offline synchronization, duplicate linking/upvotes, full UI translation and production
 deployment remain future work. Only describe features actually verified in the current checkout.
+
+## Showcase checklist
+
+1. Run `manage.py showcase_check` from the server environment before the presentation.
+2. Keep both Django and Next.js running; an offline screen does not mean the backend is running.
+3. Use separate browser profiles/private windows for citizen and officer accounts.
+4. Demonstrate text/photo/GPS reporting, suggestions, assignment, evidence, resolution and feedback.
+5. For locations outside demo zones, use **Set department and ward manually** before assigning.
+6. Record a short microphone sample on the presenting laptop; browser permissions require localhost or HTTPS.
+7. Demonstrate **Save draft**, refresh, and **Restore draft** if needed. Clear the saved draft afterward.
+8. Installation availability depends on the browser. Load the app once online before showing the offline screen.
+9. No Google font download is needed for the build. The speech model must be downloaded once separately.
+
+Do not claim image recognition, official government routing, push/SMS delivery, or production hosting.
+Uploaded images are evidence and nearby results are private-data-limited summaries.

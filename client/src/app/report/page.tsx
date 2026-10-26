@@ -4,6 +4,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
+import ReportDraft from "@/components/report/ReportDraft";
 import VoiceRecorder from "@/components/report/VoiceRecorder";
 import DuplicateCheck from "@/components/report/DuplicateCheck";
 import PhotoPicker from "@/components/report/PhotoPicker";
@@ -154,6 +155,10 @@ export default function ReportPage() {
         hidden={reviewing}
       >
         <fieldset disabled={busy} className="space-y-5">
+          <ReportDraft value={{ text, category, latitude, longitude, language }} onRestore={(draft) => {
+            setText(draft.text); setCategory(draft.category); setLatitude(draft.latitude);
+            setLongitude(draft.longitude); setLanguageChoice(draft.language); setAnalysis(null);
+          }} />
           <label className="block">
             Complaint language
             <select

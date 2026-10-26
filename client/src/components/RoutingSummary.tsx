@@ -18,6 +18,7 @@ export default function RoutingSummary({
       <p>Department: {report.department || "Pending routing"}</p>
       <p>Ward: {report.ward || "Manual routing required"}</p>
       <p>Worker: {report.assigned_worker || "Not assigned yet"}</p>
+      {report.routing_mode === "manual" && <p className="text-sm text-gray-600">Routing set manually by an officer. Configured demo wards are not official boundaries.</p>}
 
       {report.routing_mode === "demo" && (
         <p className="text-sm text-amber-800">

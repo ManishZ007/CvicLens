@@ -7,7 +7,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import (
     require_GET,
     require_POST,
@@ -17,7 +16,6 @@ from django.views.decorators.http import (
 from .models import User
 
 
-@csrf_exempt
 @require_POST
 def login_view(request):
     try:
@@ -72,7 +70,6 @@ def login_view(request):
     )
 
 
-@csrf_exempt
 @require_POST
 def register_view(request):
     try:
@@ -121,6 +118,8 @@ def register_view(request):
         errors["age"] = ["Age is required."]
     else:
         try:
+            if isinstance(age, bool) or (isinstance(age, float) and not age.is_integer()):
+                raise ValueError()
             age = int(age)
         except (TypeError, ValueError):
             errors["age"] = ["Age must be a number."]
